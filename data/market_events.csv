@@ -1,0 +1,5 @@
+title,event_type,published_at,affected_driver,affected_material,impact_direction,impact_magnitude,event_confidence
+Rare-earth export restriction announced,EXPORT_RESTRICTION,2026-04-01T00:00:00,Rare Earth Index,Ceria CMP Slurry,UP,HIGH,82.0
+Regional energy cost pressure from natural gas prices,ENERGY_EVENT,2026-06-01T00:00:00,Energy Price Index,Ceria CMP Slurry,UP,MEDIUM,70.0
+New hydrogen peroxide production capacity online,CAPACITY_EXPANSION,2026-02-01T00:00:00,Energy Price Index,Hydrogen Peroxide (Electronic Grade),DOWN,MEDIUM,65.0
+Copper mine labor strike disrupts supply,SUPPLY_DISRUPTION,2026-05-01T00:00:00,Copper LME Index,Copper Sputtering Target,UP,HIGH,75.0

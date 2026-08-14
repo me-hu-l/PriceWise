@@ -1,0 +1,12 @@
+material_code,component_code,component_name,percentage_of_cost
+MAT-001,CER,Ceria abrasive,42.0
+MAT-001,H2O2,H2O2 (Oxidizer),18.0
+MAT-001,DISP,Dispersant,12.0
+MAT-001,DIW,DI water + additives,28.0
+MAT-002,H2O2P,H2O2 (Pure),85.0
+MAT-002,STAB,Stabilizer,15.0
+MAT-003,RESIN,Specialty polymer resin,60.0
+MAT-003,PAG,Photoacid generator,25.0
+MAT-003,SOLV,Solvent carrier,15.0
+MAT-004,CU,Copper (99.999% purity),88.0
+MAT-004,FAB,Target fabrication,12.0

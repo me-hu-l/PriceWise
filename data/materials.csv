@@ -1,0 +1,5 @@
+material_code,name,category,unit,currency,criticality,current_price,current_price_date,lead_time_days,single_source_flag
+MAT-001,Ceria CMP Slurry,CMP Consumable,L,USD,HIGH,1294.06,2026-08-01,75,True
+MAT-002,Hydrogen Peroxide (Electronic Grade),Oxidizer Chemical,L,USD,MEDIUM,183.42,2026-08-01,30,False
+MAT-003,Specialty Photoresist Polymer,Photoresist Specialty Chemical,kg,USD,CRITICAL,4037.52,2026-08-01,120,True
+MAT-004,Copper Sputtering Target,Metal Consumable,kg,USD,MEDIUM,70.29,2026-08-01,50,False

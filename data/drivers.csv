@@ -1,0 +1,8 @@
+driver_key,id,name,category,unit,source_type,default_lag_days,directionality,reliability_score
+rare_earth_index,1,Rare Earth Index,RAW_MATERIAL,index (base 100),commodity_index,30,POSITIVE,0.8
+energy_price_index,2,Energy Price Index,ENERGY,index (base 100),commodity_index,15,POSITIVE,0.85
+freight_index,3,Freight Index,FREIGHT,index (base 100),logistics_index,20,POSITIVE,0.7
+fx_index,4,FX Index (USD Basket),FX,index (base 100),fx_index,5,POSITIVE,0.9
+chemical_feedstock_index,5,Chemical Feedstock Index,RAW_MATERIAL,index (base 100),commodity_index,25,POSITIVE,0.75
+copper_lme_index,6,Copper LME Index,RAW_MATERIAL,index (base 100),commodity_index,10,POSITIVE,0.85
+specialty_polymer_feedstock_index,7,Specialty Polymer Feedstock Index,RAW_MATERIAL,index (base 100),commodity_index,40,POSITIVE,0.55

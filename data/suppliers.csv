@@ -1,0 +1,8 @@
+supplier_code,name,country,share_of_supply,lead_time_days,single_source,risk_score
+SUP-A,Supplier A (Japan),Japan,0.82,75,False,78.0
+SUP-B,Supplier B (South Korea),South Korea,0.18,60,False,40.0
+SUP-C,Supplier C (USA),USA,0.6,30,False,35.0
+SUP-D,Supplier D (Germany),Germany,0.4,35,False,32.0
+SUP-E,Supplier E (Japan),Japan,1.0,120,True,88.0
+SUP-F,Supplier F (Chile),Chile,0.55,50,False,42.0
+SUP-G,Supplier G (Taiwan),Taiwan,0.45,45,False,38.0

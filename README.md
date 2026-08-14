@@ -1,0 +1,149 @@
+# PriceWise
+
+**Material Price Intelligence & Procurement Decision Engine** — a FABathon 2026 concept for Tata Electronics / TSMPL's semiconductor material price forecasting challenge.
+
+> All data in this repository (materials, prices, drivers, suppliers, market events) is **synthetic demo data**, generated for demonstration purposes. It is not real Tata Electronics / TSMPL procurement data.
+
+## 1. Problem
+
+Supply chain teams struggle to forecast semiconductor material prices due to limited historical data, fragmented market intelligence, and reliance on individual expertise. PriceWise aims to be an **explainable procurement intelligence platform** — not a black-box forecasting model — that answers four questions for any material:
+
+1. **WHAT** is likely to happen to the price?
+2. **WHY** is it likely to happen?
+3. **HOW CONFIDENT** are we?
+4. **WHAT SHOULD PROCUREMENT DO?**
+
+## 2. Solution (current state — Phase 1)
+
+Phase 1 delivers the **foundation**: a real database schema modeling the full material → component → driver → supplier knowledge graph, a working FastAPI backend serving that data, a seeded set of realistic demo materials, and a Next.js dashboard that can browse materials, see price history, composition, price drivers, market events, and suppliers.
+
+Forecasting, confidence scoring, recommendations, scenario simulation, and supplier-claim analysis are **explicitly deferred** to later phases (see [§10 Phase plan](#10-phase-plan)) and are exposed today as clean, structured "not yet implemented" API responses rather than fabricated numbers.
+
+## 3. Architecture
+
+```
+Next.js (frontend) ──HTTP──> FastAPI (backend) ──SQLAlchemy──> SQLite (dev) / PostgreSQL (docker)
+```
+
+- **Frontend**: Next.js 14 (App Router) + TypeScript + Tailwind CSS + Recharts.
+- **Backend**: FastAPI + Pydantic + SQLAlchemy 2.0 + Alembic.
+- **Database**: SQLite for local dev (`backend/pricewise.db`), PostgreSQL via `docker-compose`.
+- **ML/Intelligence**: `backend/app/ml/` and `backend/app/intelligence/` contain scaffolded, documented interfaces for Phase 2/4 work (driver model, ML residual model, ensemble, SHAP, confidence, LLM event extraction) — not yet implemented.
+
+See [docs/architecture.md](docs/architecture.md) for the full component/data-flow diagram and [docs/data_dictionary.md](docs/data_dictionary.md) for every table/column.
+
+## 4. Repository structure
+
+```
+pricewise/
+├── backend/        FastAPI app, models, services, routes, ML/intelligence stubs, seed data, tests
+├── frontend/        Next.js app, components, API client
+├── data/            Generated demo CSVs (written by the seed script)
+├── ml_artifacts/    Reserved for cached model artifacts (Phase 2+)
+├── docs/            Architecture, data dictionary, demo script
+└── docker-compose.yml
+```
+
+## 5. Setup
+
+### Backend
+
+```powershell
+cd backend
+python -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
+.venv\Scripts\alembic upgrade head
+.venv\Scripts\python -m app.seed.seed_database
+.venv\Scripts\uvicorn app.main:app --reload --port 8000
+```
+
+Copy `.env.example` to `.env` at the repo root first if you want to override defaults (SQLite is used out of the box, no `.env` required).
+
+### Frontend
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Visit `http://localhost:3000`. The frontend calls the backend at `NEXT_PUBLIC_API_URL` (defaults to `http://localhost:8000`).
+
+### Docker (Postgres + backend + frontend)
+
+```powershell
+docker compose up --build
+```
+
+This runs migrations and seeds the database automatically on backend startup.
+
+### Tests
+
+```powershell
+cd backend
+.venv\Scripts\pytest -q
+```
+
+## 6. Demo data
+
+Run `python -m app.seed.seed_database` (idempotent — safe to re-run). It generates:
+
+- **4 materials**: Ceria CMP Slurry (complex, single-source, 48 months of history), Hydrogen Peroxide (commodity-driven, 42 months), Specialty Photoresist Polymer (sparse history — only 8 months, demonstrates LOW_DATA mode), Copper Sputtering Target (metal-index driven, 40 months).
+- Material components, price drivers, and the component→driver knowledge graph edges.
+- Correlated (noisy, not perfectly correlated) driver index series and derived price histories.
+- Suppliers, supplier quotes (including the hero-narrative +9% claim on Ceria CMP Slurry), and market events.
+
+The same data is written to `data/*.csv` for inspection.
+
+## 7. ML methodology (planned — Phase 2)
+
+Per the roadmap, forecasting will use a **hybrid** approach rather than a single ML model, because historical data is limited:
+
+1. **Baselines** — last value, moving average, exponential smoothing.
+2. **Driver model** — economically interpretable regression: `price_change = Σ(beta_i * driver_i_change) + error`.
+3. **ML residual model** — LightGBM trained on `residual = actual_price − driver_model_prediction`.
+4. **Ensemble** — weighted combination, weights from walk-forward (never random-split) validation.
+
+Interfaces for each stage already exist (documented stubs) in `backend/app/ml/`.
+
+## 8. Confidence methodology (planned — Phase 2)
+
+Five weighted components, configurable in `app/core/config.py`:
+
+```
+overall = 0.20*data_quality + 0.25*driver_strength + 0.25*model_performance
+        + 0.15*market_signal_quality + 0.15*forecast_stability
+```
+
+Clamped to 0–100. This is a decision-support heuristic, not a statistically validated probability — the UI must always call it "forecast confidence score."
+
+## 9. Recommendation rules (planned — Phase 3)
+
+Rule-based (not LLM-driven) decision engine mapping forecast direction + confidence + supply risk to one of: `SHORT_LOCK`, `LONG_LOCK`, `WAIT`, `NEGOTIATE`, `STOCK`, `DUAL_SOURCE`, `MONITOR`. See roadmap §21 for the full rule table.
+
+## 10. Phase plan
+
+| Phase | Scope | Status |
+|---|---|---|
+| 1 | Repo, DB schema, migrations, seed data, FastAPI, Next.js, API client | ✅ Done |
+| 2 | Driver model, baseline forecast, ML residual, ensemble, SHAP, confidence | Not started |
+| 3 | Recommendation engine, supplier claim analyzer, criticality, supply risk | Not started |
+| 4 | Market event model, mock LLM extraction, event impact, source quality | Not started |
+| 5 | Scenario engine (what-if simulator) | Not started |
+| 6 | UX polish (executive dashboard, evidence trail, waterfall charts) | Not started |
+
+## 11. API documentation
+
+Interactive OpenAPI docs are available at `http://localhost:8000/docs` once the backend is running. Implemented (real data) endpoints:
+
+- `GET /api/materials`, `GET /api/materials/{id}`, `.../components`, `.../drivers`, `.../history`, `.../suppliers`, `.../supplier-claims`, `.../market-events`
+- `GET /api/drivers`, `GET /api/suppliers`, `GET /api/market/events`, `GET /api/dashboard/summary`
+
+Stub (structured `not_implemented` response) endpoints, reserved for Phase 2/3/5:
+
+- `GET /api/materials/{id}/forecast`, `.../forecast/explanation`, `.../confidence`, `.../recommendation`
+- `POST /api/forecast`, `POST /api/scenario`, `POST /api/supplier-claim/analyze`
+
+## 12. Future improvements
+
+See [§10 Phase plan](#10-phase-plan) and roadmap.md for the full backlog (driver/ML forecasting, confidence engine, recommendation engine, market intelligence pipeline, scenario simulator, evidence/audit trail, executive dashboard polish).

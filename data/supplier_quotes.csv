@@ -1,0 +1,5 @@
+material_code,supplier_code,quote_date,quoted_price,previous_price,claimed_change_pct
+MAT-001,SUP-A,2026-08-01,1410.53,1294.06,9.0
+MAT-002,SUP-C,2026-08-01,188.92,183.42,3.0
+MAT-003,SUP-E,2026-08-01,4158.65,4037.52,3.0
+MAT-004,SUP-F,2026-08-01,72.4,70.29,3.0
