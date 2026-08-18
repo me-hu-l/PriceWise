@@ -14,22 +14,33 @@ from pathlib import Path
 from app.db.database import Base, SessionLocal, engine
 from app.db.models import (
     ComponentDriver,
+    ConfidenceComponent,
     Driver,
     DriverObservation,
+    Evidence,
+    Forecast,
+    ForecastContribution,
     Material,
     MaterialComponent,
     MarketEvent,
     PriceObservation,
+    Recommendation,
     Supplier,
     SupplierQuote,
 )
 from app.seed.demo_data import generate_all
+from app.seed.generate_forecasts import generate_all_forecasts
 
 DATA_DIR = Path(__file__).resolve().parents[3] / "data"
 
 
 def _clear_all(db) -> None:
     for model in (
+        Evidence,
+        Recommendation,
+        ForecastContribution,
+        ConfidenceComponent,
+        Forecast,
         SupplierQuote,
         PriceObservation,
         ComponentDriver,
@@ -326,6 +337,9 @@ def seed() -> None:
         )
     finally:
         db.close()
+
+    n_forecasts = generate_all_forecasts()
+    print(f"Precomputed forecasts for {n_forecasts} materials.")
 
 
 if __name__ == "__main__":

@@ -1,11 +1,25 @@
-"""Phase 2 TODO: five-component confidence formula (roadmap section 13)."""
+"""Confidence retrieval — the five-component formula itself lives in app.ml.confidence.
 
-from app.schemas.common import NotImplementedResponse
+Confidence is always read off the persisted ConfidenceComponent tied to a
+material's latest Forecast (roadmap section 39 — precomputed, not recomputed
+per request).
+"""
+
+from __future__ import annotations
+
+from sqlalchemy.orm import Session
+
+from app.db.models import ConfidenceComponent, Material
+from app.services import forecast_service
 
 
-def get_confidence(material_id: int) -> NotImplementedResponse:
-    return NotImplementedResponse(
-        feature="confidence",
-        phase="Phase 2 — Core intelligence",
-        reason="Confidence score depends on a forecast + model performance history, neither exist yet.",
+def get_confidence(db: Session, material: Material) -> ConfidenceComponent | None:
+    forecast = forecast_service.get_or_generate_forecast(db, material)
+    if forecast is None:
+        return None
+    return (
+        db.query(ConfidenceComponent)
+        .filter(ConfidenceComponent.forecast_id == forecast.id)
+        .first()
     )
+

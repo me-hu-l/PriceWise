@@ -126,17 +126,32 @@ All tables live in `backend/app/db/models/`. Types shown are logical (SQLAlchemy
 | reason | string, nullable | |
 | valid_until | date, nullable | |
 
-## Forecast *(Phase 2 — table exists, unpopulated)*
-`material_id`, `forecast_date`, `target_date`, `horizon`, `point_forecast`, `lower_bound`, `upper_bound`, `direction`, `model_version`, `confidence_score`.
+## Forecast *(Phase 2 — populated by app/services/forecast_service.py)*
+| Column | Type | Notes |
+|---|---|---|
+| material_id | FK → Material | |
+| forecast_date | date | last available price observation date |
+| target_date | date | forecast_date + 1 month |
+| horizon | string | currently always `1M` |
+| point_forecast / lower_bound / upper_bound | float | ensemble point forecast ± ~80% interval |
+| direction | string | `INCREASING` / `DECREASING` / `STABLE` |
+| model_version | string | e.g. `phase2-ensemble-v1` |
+| confidence_score | float | 0–100, mirrors `ConfidenceComponent.overall_score` |
+| baseline_pct_change / driver_pct_change / ml_pct_change | float, nullable | per-candidate pct-change forecasts (model disagreement, §15) |
+| disagreement_level | string, nullable | `LOW` / `MEDIUM` / `HIGH` |
+| data_mode | string, nullable | `LOW_DATA` / `LIMITED_DATA` / `MODERATE` / `STRONG` (§10) |
+| regime_change_detected | bool | last-3-month volatility > 1.5× prior period (§25) |
+| mae / rmse / mape / directional_accuracy / interval_coverage | float, nullable | walk-forward backtest metrics of the best available candidate (§26-27) |
 
-## ForecastContribution *(Phase 2)*
-`forecast_id`, `driver_id`, `contribution_value`, `contribution_pct`, `direction`, `rank`.
+## ForecastContribution *(Phase 2 — populated)*
+`forecast_id`, `driver_id` (a synthetic "ML Residual" Driver row represents the ML component), `contribution_value` (raw pct-change contribution, e.g. 0.041 = +4.1%), `contribution_pct` (share of total explained move, sums to ~100 across a forecast's rows), `direction`, `rank`.
 
-## ConfidenceComponent *(Phase 2)*
+## ConfidenceComponent *(Phase 2 — populated)*
 `forecast_id`, `data_score`, `driver_score`, `model_score`, `market_score`, `stability_score`, `overall_score`, `explanation`.
 
 ## Recommendation *(Phase 3 — table exists, unpopulated)*
 `material_id`, `forecast_id`, `action` (`LOCK`/`SHORT_LOCK`/`WAIT`/`NEGOTIATE`/`STOCK`/`DUAL_SOURCE`/`MONITOR`), `conviction`, `recommended_duration`, `reason`.
+
 
 ## Evidence *(Phase 3)*
 `recommendation_id`, `evidence_type`, `title`, `description`, `source`, `weight`.

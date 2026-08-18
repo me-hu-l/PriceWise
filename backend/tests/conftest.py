@@ -146,3 +146,88 @@ def seeded_material(db_session):
 
     db_session.commit()
     return material
+
+
+@pytest.fixture()
+def material_with_history(db_session):
+    """24 months of a material whose price is a noisy linear function of one
+    driver — enough history for the driver model + backtest (but not the
+    LightGBM residual model, which needs >=18 rows after feature dropna)."""
+    import numpy as np
+
+    rng = np.random.default_rng(7)
+
+    driver = models.Driver(name="Test Energy Index", category="ENERGY", default_lag_days=15)
+    db_session.add(driver)
+    db_session.flush()
+
+    material = models.Material(
+        material_code="MAT-HIST",
+        name="History Test Material",
+        category="Test Category",
+        unit="kg",
+        currency="USD",
+        criticality="MEDIUM",
+        current_price=100.0,
+        current_price_date=date(2026, 7, 1),
+        lead_time_days=30,
+        single_source_flag=False,
+    )
+    db_session.add(material)
+    db_session.flush()
+
+    component = models.MaterialComponent(
+        material_id=material.id, component_name="Test component", percentage_of_cost=100.0
+    )
+    db_session.add(component)
+    db_session.flush()
+
+    db_session.add(
+        models.ComponentDriver(
+            component_id=component.id,
+            driver_id=driver.id,
+            relationship_strength=0.8,
+            elasticity=0.8,
+            lag_period=15,
+            direction="POSITIVE",
+            confidence=0.7,
+        )
+    )
+
+    n_months = 24
+    dates = [date(2024, 8, 1)]
+    for _ in range(n_months - 1):
+        d = dates[-1]
+        dates.append(date(d.year + 1, 1, 1) if d.month == 12 else date(d.year, d.month + 1, 1))
+
+    driver_value = 100.0
+    driver_values = [driver_value]
+    for _ in range(n_months - 1):
+        driver_value *= 1 + 0.01 + rng.normal(0, 0.01)
+        driver_values.append(driver_value)
+
+    for d, v in zip(dates, driver_values):
+        db_session.add(
+            models.DriverObservation(driver_id=driver.id, date=d, value=v, unit="index")
+        )
+
+    price = 100.0
+    prices = [price]
+    for i in range(1, n_months):
+        driver_pct = (driver_values[i] - driver_values[i - 1]) / driver_values[i - 1]
+        price *= 1 + 0.8 * driver_pct + rng.normal(0, 0.005)
+        prices.append(price)
+
+    for d, p in zip(dates, prices):
+        db_session.add(
+            models.PriceObservation(
+                material_id=material.id, date=d, price=round(p, 2), currency="USD", unit="kg"
+            )
+        )
+
+    material.current_price = round(prices[-1], 2)
+    material.current_price_date = dates[-1]
+
+    db_session.commit()
+    return material
+

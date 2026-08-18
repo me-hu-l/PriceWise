@@ -95,27 +95,28 @@ Run `python -m app.seed.seed_database` (idempotent — safe to re-run). It gener
 
 The same data is written to `data/*.csv` for inspection.
 
-## 7. ML methodology (planned — Phase 2)
+## 7. ML methodology (implemented — Phase 2)
 
-Per the roadmap, forecasting will use a **hybrid** approach rather than a single ML model, because historical data is limited:
+Per the roadmap, forecasting uses a **hybrid** approach rather than a single ML model, because historical data is limited:
 
-1. **Baselines** — last value, moving average, exponential smoothing.
-2. **Driver model** — economically interpretable regression: `price_change = Σ(beta_i * driver_i_change) + error`.
-3. **ML residual model** — LightGBM trained on `residual = actual_price − driver_model_prediction`.
-4. **Ensemble** — weighted combination, weights from walk-forward (never random-split) validation.
+1. **Baselines** (`app/ml/baselines.py`) — last value, moving average, exponential smoothing, seasonal naive.
+2. **Driver model** (`app/ml/driver_model.py`) — Ridge regression: `price_pct_change = intercept + Σ(beta_i * driver_i_pct_change)`, features = drivers linked to the material's components via the knowledge graph (weighted by cost share × elasticity).
+3. **ML residual model** (`app/ml/residual_model.py`) — LightGBM trained on `residual = actual_pct_change − driver_model_fitted_pct_change`. Skipped automatically below 18 monthly observations — this is what makes the Specialty Photoresist Polymer material fall back to driver model + baseline only.
+4. **Ensemble** (`app/ml/ensemble.py`) — weighted combination of baseline/driver/driver+ML, weights from walk-forward (never random-split) validation (`app/ml/backtesting.py`); falls back to fixed driver-favoring weights when there's too little history to backtest at all (roadmap §10).
+5. **Explainability** (`app/ml/explainability.py`) — driver contribution waterfall + best-effort SHAP breakdown of the ML residual (fails gracefully if unavailable) + plain-English narrative. No LLM involved.
 
-Interfaces for each stage already exist (documented stubs) in `backend/app/ml/`.
+Forecasts are precomputed by the seed pipeline (`app/seed/generate_forecasts.py`) and lazily regenerated on first request if missing — never retrained on every page load.
 
-## 8. Confidence methodology (planned — Phase 2)
+## 8. Confidence methodology (implemented — Phase 2)
 
-Five weighted components, configurable in `app/core/config.py`:
+Five weighted components (`app/ml/confidence.py`), configurable in `app/core/config.py`:
 
 ```
 overall = 0.20*data_quality + 0.25*driver_strength + 0.25*model_performance
         + 0.15*market_signal_quality + 0.15*forecast_stability
 ```
 
-Clamped to 0–100. This is a decision-support heuristic, not a statistically validated probability — the UI must always call it "forecast confidence score."
+Clamped to 0–100. Data quality comes from the LOW_DATA/LIMITED_DATA/MODERATE/STRONG thresholds (§10); driver strength from the knowledge-graph relationship strength × confidence; model performance from walk-forward backtest directional accuracy/MAPE; market signals from related `MarketEvent` confidence/agreement; stability from model disagreement (§15) and a lightweight regime-change check (§25, last-3-month volatility vs. prior period). This is a decision-support heuristic, not a statistically validated probability — the UI always calls it "forecast confidence score."
 
 ## 9. Recommendation rules (planned — Phase 3)
 
@@ -126,7 +127,7 @@ Rule-based (not LLM-driven) decision engine mapping forecast direction + confide
 | Phase | Scope | Status |
 |---|---|---|
 | 1 | Repo, DB schema, migrations, seed data, FastAPI, Next.js, API client | ✅ Done |
-| 2 | Driver model, baseline forecast, ML residual, ensemble, SHAP, confidence | Not started |
+| 2 | Driver model, baseline forecast, ML residual, ensemble, SHAP, confidence | ✅ Done |
 | 3 | Recommendation engine, supplier claim analyzer, criticality, supply risk | Not started |
 | 4 | Market event model, mock LLM extraction, event impact, source quality | Not started |
 | 5 | Scenario engine (what-if simulator) | Not started |
@@ -137,12 +138,14 @@ Rule-based (not LLM-driven) decision engine mapping forecast direction + confide
 Interactive OpenAPI docs are available at `http://localhost:8000/docs` once the backend is running. Implemented (real data) endpoints:
 
 - `GET /api/materials`, `GET /api/materials/{id}`, `.../components`, `.../drivers`, `.../history`, `.../suppliers`, `.../supplier-claims`, `.../market-events`
+- `GET /api/materials/{id}/forecast`, `.../forecast/explanation`, `.../confidence` — real (Phase 2), return a structured `insufficient_data` payload instead of a forecast when history is too sparse (< 3 observations)
+- `POST /api/forecast` — real (Phase 2), same pipeline as the GET forecast endpoint
 - `GET /api/drivers`, `GET /api/suppliers`, `GET /api/market/events`, `GET /api/dashboard/summary`
 
-Stub (structured `not_implemented` response) endpoints, reserved for Phase 2/3/5:
+Stub (structured `not_implemented` response) endpoints, reserved for Phase 3/5:
 
-- `GET /api/materials/{id}/forecast`, `.../forecast/explanation`, `.../confidence`, `.../recommendation`
-- `POST /api/forecast`, `POST /api/scenario`, `POST /api/supplier-claim/analyze`
+- `GET /api/materials/{id}/recommendation`
+- `POST /api/scenario`, `POST /api/supplier-claim/analyze`
 
 ## 12. Future improvements
 

@@ -12,3 +12,12 @@ class NotImplementedResponse(BaseModel):
     feature: str
     phase: str
     reason: str
+
+
+class InsufficientDataResponse(BaseModel):
+    """Returned instead of a forecast/confidence when a material genuinely lacks
+    enough price history to model at all (roadmap section 40) — never fabricated."""
+
+    status: str = "insufficient_data"
+    reason: str = "Insufficient data for reliable forecast."
+

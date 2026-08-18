@@ -3,14 +3,23 @@ import { api } from "@/lib/api";
 import { Card } from "@/components/common/Card";
 import { RiskIndicator } from "@/components/common/RiskIndicator";
 import { NotAvailableCard } from "@/components/forecast/NotAvailableCard";
+import { ForecastCard } from "@/components/forecast/ForecastCard";
+import { ConfidenceBreakdown } from "@/components/forecast/ConfidenceBreakdown";
+import { DriverWaterfall } from "@/components/forecast/DriverWaterfall";
+import { ModelDisagreement } from "@/components/forecast/ModelDisagreement";
 import { PriceHistoryChart } from "@/components/materials/PriceHistoryChart";
 import { ComponentBreakdown } from "@/components/materials/ComponentBreakdown";
 import { SupplierList } from "@/components/materials/SupplierList";
 import { DriverList } from "@/components/drivers/DriverList";
 import { MarketEventList } from "@/components/market/MarketEventList";
 
-export default async function MaterialDetailPage({ params }: { params: { id: string } }) {
-  const materialId = Number(params.id);
+export default async function MaterialDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const materialId = Number(id);
   if (Number.isNaN(materialId)) notFound();
 
   let material;
@@ -20,13 +29,17 @@ export default async function MaterialDetailPage({ params }: { params: { id: str
     notFound();
   }
 
-  const [components, history, drivers, events, suppliers] = await Promise.all([
-    api.getComponents(materialId),
-    api.getHistory(materialId),
-    api.getDrivers(materialId),
-    api.getMaterialMarketEvents(materialId),
-    api.getSuppliers(materialId),
-  ]);
+  const [components, history, drivers, events, suppliers, forecast, confidence, explanation] =
+    await Promise.all([
+      api.getComponents(materialId),
+      api.getHistory(materialId),
+      api.getDrivers(materialId),
+      api.getMaterialMarketEvents(materialId),
+      api.getSuppliers(materialId),
+      api.getForecast(materialId),
+      api.getConfidence(materialId),
+      api.getForecastExplanation(materialId),
+    ]);
 
   return (
     <div className="space-y-6">
@@ -51,6 +64,16 @@ export default async function MaterialDetailPage({ params }: { params: { id: str
       </Card>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <ForecastCard forecast={forecast} />
+        <ConfidenceBreakdown confidence={confidence} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <DriverWaterfall explanation={explanation} />
+        <ModelDisagreement forecast={forecast} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <PriceHistoryChart history={history} />
         <ComponentBreakdown components={components} />
       </div>
@@ -60,8 +83,6 @@ export default async function MaterialDetailPage({ params }: { params: { id: str
       <SupplierList suppliers={suppliers} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <NotAvailableCard title="Forecast" phase="Phase 2" />
-        <NotAvailableCard title="Confidence" phase="Phase 2" />
         <NotAvailableCard title="Recommendation" phase="Phase 3" />
       </div>
     </div>

@@ -1,10 +1,14 @@
+from typing import Union
+
 from fastapi import APIRouter, HTTPException
 from sqlalchemy.orm import Session
 from fastapi import Depends
 
 from app.db.database import get_db
-from app.schemas.common import NotImplementedResponse
+from app.schemas.common import InsufficientDataResponse, NotImplementedResponse
+from app.schemas.confidence import ConfidenceRead
 from app.schemas.driver import ComponentDriverRead
+from app.schemas.forecast import ForecastExplanationRead, ForecastRead
 from app.schemas.market_event import MarketEventRead
 from app.schemas.material import MaterialComponentRead, MaterialRead, PriceObservationRead
 from app.schemas.supplier import SupplierQuoteRead, SupplierRead
@@ -75,22 +79,40 @@ def get_market_events(material_id: int, db: Session = Depends(get_db)):
     return market_service.list_events_for_material(db, material_id, db_material=material)
 
 
-@router.get("/{material_id}/forecast", response_model=NotImplementedResponse)
+@router.get("/{material_id}/forecast", response_model=Union[ForecastRead, InsufficientDataResponse])
 def get_forecast(material_id: int, db: Session = Depends(get_db)):
-    _get_material_or_404(db, material_id)
-    return forecast_service.get_forecast(material_id)
+    material = _get_material_or_404(db, material_id)
+    forecast = forecast_service.get_or_generate_forecast(db, material)
+    if forecast is None:
+        return InsufficientDataResponse(
+            reason="Insufficient data for reliable forecast (fewer than 3 price observations)."
+        )
+    return forecast
 
 
-@router.get("/{material_id}/forecast/explanation", response_model=NotImplementedResponse)
+@router.get(
+    "/{material_id}/forecast/explanation",
+    response_model=Union[ForecastExplanationRead, InsufficientDataResponse],
+)
 def get_forecast_explanation(material_id: int, db: Session = Depends(get_db)):
-    _get_material_or_404(db, material_id)
-    return forecast_service.get_forecast_explanation(material_id)
+    material = _get_material_or_404(db, material_id)
+    explanation = forecast_service.get_forecast_explanation(db, material)
+    if explanation is None:
+        return InsufficientDataResponse(
+            reason="Insufficient data for reliable forecast (fewer than 3 price observations)."
+        )
+    return explanation
 
 
-@router.get("/{material_id}/confidence", response_model=NotImplementedResponse)
+@router.get("/{material_id}/confidence", response_model=Union[ConfidenceRead, InsufficientDataResponse])
 def get_confidence(material_id: int, db: Session = Depends(get_db)):
-    _get_material_or_404(db, material_id)
-    return confidence_service.get_confidence(material_id)
+    material = _get_material_or_404(db, material_id)
+    confidence = confidence_service.get_confidence(db, material)
+    if confidence is None:
+        return InsufficientDataResponse(
+            reason="Insufficient data for reliable forecast (fewer than 3 price observations)."
+        )
+    return confidence
 
 
 @router.get("/{material_id}/recommendation", response_model=NotImplementedResponse)

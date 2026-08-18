@@ -103,10 +103,73 @@ export interface DashboardSummary {
   single_source_materials: number;
 }
 
-/** Structured placeholder returned by endpoints not yet implemented (Phase 2+). */
+/** Structured placeholder returned by endpoints not yet implemented (Phase 3+). */
 export interface NotImplementedResponse {
   status: "not_implemented";
   feature: string;
   phase: string;
   reason: string;
 }
+
+/** Returned instead of a forecast/confidence when a material genuinely lacks history. */
+export interface InsufficientDataResponse {
+  status: "insufficient_data";
+  reason: string;
+}
+
+export interface Forecast {
+  id: number;
+  material_id: number;
+  forecast_date: string;
+  target_date: string;
+  horizon: string;
+  point_forecast: number;
+  lower_bound: number;
+  upper_bound: number;
+  direction: "INCREASING" | "DECREASING" | "STABLE";
+  model_version: string;
+  confidence_score: number;
+  baseline_pct_change: number | null;
+  driver_pct_change: number | null;
+  ml_pct_change: number | null;
+  disagreement_level: "LOW" | "MEDIUM" | "HIGH" | null;
+  data_mode: "LOW_DATA" | "LIMITED_DATA" | "MODERATE" | "STRONG" | null;
+  regime_change_detected: boolean;
+  mae: number | null;
+  rmse: number | null;
+  mape: number | null;
+  directional_accuracy: number | null;
+  interval_coverage: number | null;
+  created_at: string;
+}
+
+export interface ForecastContributionRow {
+  label: string;
+  contribution_value: number;
+  contribution_pct: number;
+  direction: string;
+  rank: number;
+}
+
+export interface ForecastExplanation {
+  forecast_id: number;
+  waterfall: ForecastContributionRow[];
+  market_events: MarketEvent[];
+  narrative: string;
+}
+
+export interface Confidence {
+  forecast_id: number;
+  data_score: number;
+  driver_score: number;
+  model_score: number;
+  market_score: number;
+  stability_score: number;
+  overall_score: number;
+  explanation: string;
+}
+
+export type ForecastResponse = Forecast | InsufficientDataResponse;
+export type ForecastExplanationResponse = ForecastExplanation | InsufficientDataResponse;
+export type ConfidenceResponse = Confidence | InsufficientDataResponse;
+
