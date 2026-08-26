@@ -7,10 +7,12 @@ import { ConfidenceBreakdown } from "@/components/forecast/ConfidenceBreakdown";
 import { DriverWaterfall } from "@/components/forecast/DriverWaterfall";
 import { ModelDisagreement } from "@/components/forecast/ModelDisagreement";
 import { PriceHistoryChart } from "@/components/materials/PriceHistoryChart";
+import { PriceHistoryUpload } from "@/components/materials/PriceHistoryUpload";
 import { ComponentBreakdown } from "@/components/materials/ComponentBreakdown";
 import { KnowledgeGraph } from "@/components/materials/KnowledgeGraph";
 import { SupplierList } from "@/components/materials/SupplierList";
 import { DriverList } from "@/components/drivers/DriverList";
+import { DriverHistoryCharts } from "@/components/drivers/DriverHistoryCharts";
 import { MarketEventList } from "@/components/market/MarketEventList";
 import { RecommendationCard } from "@/components/recommendations/RecommendationCard";
 
@@ -30,11 +32,12 @@ export default async function MaterialDetailPage({
     notFound();
   }
 
-  const [components, history, drivers, events, suppliers, forecast, confidence, explanation, recommendation] =
+  const [components, history, drivers, driverHistories, events, suppliers, forecast, confidence, explanation, recommendation] =
     await Promise.all([
       api.getComponents(materialId),
       api.getHistory(materialId),
       api.getDrivers(materialId),
+      api.getDriverObservations(materialId),
       api.getMaterialMarketEvents(materialId),
       api.getSuppliers(materialId),
       api.getForecast(materialId),
@@ -54,6 +57,10 @@ export default async function MaterialDetailPage({
         <RiskIndicator level={material.criticality} />
       </div>
 
+      <KnowledgeGraph materialName={material.name} components={components} drivers={drivers} />
+
+      <PriceHistoryUpload materialId={materialId} />
+
       <Card>
         <p className="text-3xl font-semibold text-slate-900">
           {material.currency} {material.current_price.toLocaleString()} / {material.unit}
@@ -65,24 +72,26 @@ export default async function MaterialDetailPage({
         </p>
       </Card>
 
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(220px,0.42fr)]">
+        <PriceHistoryChart history={history} forecast={forecast} />
+        <div className="lg:max-w-sm">
+          <ForecastCard forecast={forecast} />
+        </div>
+      </div>
+
+      <DriverHistoryCharts histories={driverHistories} />
+
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
-        <ForecastCard forecast={forecast} />
         <ConfidenceBreakdown confidence={confidence} />
-      </div>
-
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
         <DriverWaterfall explanation={explanation} />
-        <ModelDisagreement forecast={forecast} />
       </div>
 
-      <PriceHistoryChart history={history} forecast={forecast} />
+      <ModelDisagreement forecast={forecast} />
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
         <ComponentBreakdown components={components} />
         <SupplierList suppliers={suppliers} />
       </div>
-
-      <KnowledgeGraph materialName={material.name} components={components} drivers={drivers} />
 
       <DriverList drivers={drivers} />
       <MarketEventList events={events} />

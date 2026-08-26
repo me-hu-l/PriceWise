@@ -1,3 +1,6 @@
+from app.db import models
+
+
 def test_list_materials(client, seeded_material):
     res = client.get("/api/materials")
     assert res.status_code == 200
@@ -35,6 +38,29 @@ def test_get_history(client, seeded_material):
     res = client.get(f"/api/materials/{seeded_material.id}/history")
     assert res.status_code == 200
     assert len(res.json()) == 1
+
+
+def test_upload_history_uses_overlay_and_preserves_seeded_rows(
+    client, db_session, seeded_material
+):
+    csv_content = "date,price,currency,unit\n2026-01-01,1300,USD,L\n2026-02-01,1315,USD,L\n2026-03-01,1330,USD,L\n"
+    res = client.post(
+        f"/api/materials/{seeded_material.id}/history/upload",
+        files={"file": ("history.csv", csv_content, "text/csv")},
+    )
+    assert res.status_code == 200
+    assert res.json()["observation_count"] == 3
+
+    history = client.get(f"/api/materials/{seeded_material.id}/history").json()
+    assert [row["price"] for row in history] == [1300.0, 1315.0, 1330.0]
+    assert (
+        len(
+            db_session.query(models.PriceObservation)
+            .filter_by(material_id=seeded_material.id)
+            .all()
+        )
+        == 1
+    )
 
 
 def test_get_suppliers(client, seeded_material):

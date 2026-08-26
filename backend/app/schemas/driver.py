@@ -1,3 +1,5 @@
+from datetime import date
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -32,3 +34,17 @@ class ComponentDriverRead(BaseModel):
     direction: str
     confidence: float | None
     rationale: str | None
+
+
+class DriverObservationRead(BaseModel):
+    date: date
+    value: float
+
+
+class MaterialDriverHistoryRead(BaseModel):
+    driver_id: int
+    driver_name: str
+    unit: str | None
+    observations: list[DriverObservationRead]
+    projected_date: date | None
+    projected_value: float | None

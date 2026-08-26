@@ -3,6 +3,7 @@
 from app.db.models.material import Material, MaterialComponent
 from app.db.models.driver import Driver, ComponentDriver, DriverObservation
 from app.db.models.price import PriceObservation
+from app.db.models.custom_price import CustomPriceObservation
 from app.db.models.market_event import MarketEvent
 from app.db.models.supplier import Supplier, SupplierQuote
 from app.db.models.forecast import Forecast, ForecastContribution, ConfidenceComponent
@@ -15,6 +16,7 @@ __all__ = [
     "ComponentDriver",
     "DriverObservation",
     "PriceObservation",
+    "CustomPriceObservation",
     "MarketEvent",
     "Supplier",
     "SupplierQuote",

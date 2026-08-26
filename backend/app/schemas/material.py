@@ -48,3 +48,10 @@ class PriceObservationRead(BaseModel):
     contract_type: str | None
     source: str | None
     data_quality: str | None
+
+
+class PriceUploadResult(BaseModel):
+    message: str
+    observation_count: int
+    latest_date: date
+    latest_price: float

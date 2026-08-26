@@ -1,17 +1,25 @@
+import csv
+import io
+from datetime import date
 from typing import Union
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 from fastapi import Depends
 
 from app.db.database import get_db
 from app.schemas.common import InsufficientDataResponse
 from app.schemas.confidence import ConfidenceRead
-from app.schemas.driver import ComponentDriverRead
+from app.schemas.driver import ComponentDriverRead, MaterialDriverHistoryRead
 from app.schemas.forecast import ForecastExplanationRead, ForecastRead
 from app.schemas.market_event import MarketEventRead
 from app.schemas.recommendation import RecommendationRead
-from app.schemas.material import MaterialComponentRead, MaterialRead, PriceObservationRead
+from app.schemas.material import (
+    MaterialComponentRead,
+    MaterialRead,
+    PriceObservationRead,
+    PriceUploadResult,
+)
 from app.schemas.supplier import SupplierQuoteRead, SupplierRead
 from app.services import (
     confidence_service,
@@ -56,10 +64,60 @@ def get_drivers(material_id: int, db: Session = Depends(get_db)):
     return driver_service.list_material_component_drivers(db, material_id)
 
 
+@router.get("/{material_id}/driver-observations", response_model=list[MaterialDriverHistoryRead])
+def get_driver_observations(material_id: int, db: Session = Depends(get_db)):
+    _get_material_or_404(db, material_id)
+    return driver_service.list_material_driver_histories(db, material_id)
+
+
 @router.get("/{material_id}/history", response_model=list[PriceObservationRead])
 def get_history(material_id: int, db: Session = Depends(get_db)):
     _get_material_or_404(db, material_id)
     return material_service.list_price_history(db, material_id)
+
+
+@router.post("/{material_id}/history/upload", response_model=PriceUploadResult)
+async def upload_price_history(
+    material_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)
+):
+    material = _get_material_or_404(db, material_id)
+    if not file.filename or not file.filename.lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Upload a CSV file.")
+    try:
+        content = (await file.read()).decode("utf-8-sig")
+        reader = csv.DictReader(io.StringIO(content))
+        required = {"date", "price"}
+        if not reader.fieldnames or not required.issubset({name.strip().lower() for name in reader.fieldnames}):
+            raise ValueError("CSV must contain date and price columns.")
+        observations = []
+        for line_number, row in enumerate(reader, start=2):
+            normalized = {str(key).strip().lower(): (value or "").strip() for key, value in row.items()}
+            observations.append(
+                {
+                    "date": date.fromisoformat(normalized["date"]),
+                    "price": float(normalized["price"]),
+                    "currency": normalized.get("currency") or material.currency,
+                    "unit": normalized.get("unit") or material.unit,
+                }
+            )
+            if observations[-1]["price"] <= 0:
+                raise ValueError(f"Line {line_number}: price must be positive.")
+        if len(observations) < 3:
+            raise ValueError("Upload at least 3 observations.")
+        if any(row["date"] > date.today() for row in observations):
+            raise ValueError("Observation dates cannot be in the future.")
+        if len({row["date"] for row in observations}) != len(observations):
+            raise ValueError("Observation dates must be unique.")
+        observations.sort(key=lambda row: row["date"])
+    except (UnicodeDecodeError, ValueError, KeyError) as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid CSV: {exc}") from exc
+    material_service.replace_custom_price_history(db, material, observations)
+    return PriceUploadResult(
+        message="Custom price history uploaded and forecast cache cleared.",
+        observation_count=len(observations),
+        latest_date=observations[-1]["date"],
+        latest_price=observations[-1]["price"],
+    )
 
 
 @router.get("/{material_id}/suppliers", response_model=list[SupplierRead])

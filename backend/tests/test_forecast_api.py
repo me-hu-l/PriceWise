@@ -25,6 +25,16 @@ def test_forecast_explanation_endpoint_returns_waterfall(client, material_with_h
     assert len(body["waterfall"]) >= 1
 
 
+def test_driver_observations_endpoint_returns_history_and_projection(client, material_with_history):
+    res = client.get(f"/api/materials/{material_with_history.id}/driver-observations")
+    assert res.status_code == 200
+    body = res.json()
+    assert len(body) == 1
+    assert len(body[0]["observations"]) == 24
+    assert body[0]["projected_date"]
+    assert body[0]["projected_value"] is not None
+
+
 def test_recommendation_endpoint_returns_rule_based_result(client, material_with_history):
     res = client.get(f"/api/materials/{material_with_history.id}/recommendation")
     body = res.json()

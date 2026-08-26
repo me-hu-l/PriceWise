@@ -146,6 +146,9 @@ All tables live in `backend/app/db/models/`. Types shown are logical (SQLAlchemy
 ## ForecastContribution *(Phase 2 — populated)*
 `forecast_id`, `driver_id` (a linked economic driver), `contribution_value` (allocated forecast pct-change contribution, e.g. 0.004 = +0.4%), `contribution_pct` (absolute share of the forecast move, sums to ~100 across a forecast's rows), `direction`, `rank`. The ML residual remains an internal model component and is not persisted as a forecast contribution or shown in this table.
 
+## CustomPriceObservation *(Phase 3 — user upload overlay)*
+`material_id`, `date`, `price`, `currency`, `unit`, `source`, and optional observation metadata. Uploaded rows are stored separately from seeded `PriceObservation` rows. When present, this overlay is used for material history, forecasts, confidence, explanations, and recommendations; the seeded rows remain unchanged.
+
 ## ConfidenceComponent *(Phase 2 — populated)*
 `forecast_id`, `data_score`, `driver_score`, `model_score`, `market_score`, `stability_score`, `overall_score`, `explanation`.
 

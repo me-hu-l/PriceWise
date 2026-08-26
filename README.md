@@ -139,6 +139,8 @@ Interactive OpenAPI docs are available at `http://localhost:8000/docs` once the 
 
 - `GET /api/materials`, `GET /api/materials/{id}`, `.../components`, `.../drivers`, `.../history`, `.../suppliers`, `.../supplier-claims`, `.../market-events`
 - `GET /api/materials/{id}/forecast`, `.../forecast/explanation`, `.../confidence` — real (Phase 2), return a structured `insufficient_data` payload instead of a forecast when history is too sparse (< 3 observations)
+- `GET /api/materials/{id}/driver-observations` — involved driver history with next-period projected values
+- `POST /api/materials/{id}/history/upload` — upload a custom CSV overlay (`date`, `price`; optional `currency`, `unit`) without changing seeded observations
 - `POST /api/forecast` — real (Phase 2), same pipeline as the GET forecast endpoint
 - `GET /api/drivers`, `GET /api/suppliers`, `GET /api/market/events`, `GET /api/dashboard/summary`
 

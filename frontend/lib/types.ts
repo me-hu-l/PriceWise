@@ -39,6 +39,13 @@ export interface PriceObservation {
   data_quality: string | null;
 }
 
+export interface PriceUploadResult {
+  message: string;
+  observation_count: number;
+  latest_date: string;
+  latest_price: number;
+}
+
 export interface ComponentDriver {
   id: number;
   component_id: number;
@@ -52,6 +59,20 @@ export interface ComponentDriver {
   direction: string;
   confidence: number | null;
   rationale: string | null;
+}
+
+export interface DriverObservation {
+  date: string;
+  value: number;
+}
+
+export interface MaterialDriverHistory {
+  driver_id: number;
+  driver_name: string;
+  unit: string | null;
+  observations: DriverObservation[];
+  projected_date: string | null;
+  projected_value: number | null;
 }
 
 export interface MarketEvent {
