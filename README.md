@@ -103,7 +103,7 @@ Per the roadmap, forecasting uses a **hybrid** approach rather than a single ML 
 2. **Driver model** (`app/ml/driver_model.py`) — Ridge regression: `price_pct_change = intercept + Σ(beta_i * driver_i_pct_change)`, features = drivers linked to the material's components via the knowledge graph (weighted by cost share × elasticity).
 3. **ML residual model** (`app/ml/residual_model.py`) — LightGBM trained on `residual = actual_pct_change − driver_model_fitted_pct_change`. Skipped automatically below 18 monthly observations — this is what makes the Specialty Photoresist Polymer material fall back to driver model + baseline only.
 4. **Ensemble** (`app/ml/ensemble.py`) — weighted combination of baseline/driver/driver+ML, weights from walk-forward (never random-split) validation (`app/ml/backtesting.py`); falls back to fixed driver-favoring weights when there's too little history to backtest at all (roadmap §10).
-5. **Explainability** (`app/ml/explainability.py`) — driver contribution waterfall + best-effort SHAP breakdown of the ML residual (fails gracefully if unavailable) + plain-English narrative. No LLM involved.
+5. **Explainability** (`app/ml/explainability.py`) — driver contribution waterfall, with the full forecast move allocated across explainable economic drivers, plus a plain-English narrative. The ML residual is retained as an internal model component and is not exposed as a driver contribution. No LLM involved.
 
 Forecasts are precomputed by the seed pipeline (`app/seed/generate_forecasts.py`) and lazily regenerated on first request if missing — never retrained on every page load.
 

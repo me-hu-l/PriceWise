@@ -39,21 +39,6 @@ def _next_month(d: date) -> date:
     return date(d.year, d.month + 1, 1)
 
 
-def _get_or_create_ml_residual_driver(db: Session) -> Driver:
-    driver = db.query(Driver).filter(Driver.name == explainability.ML_RESIDUAL_DRIVER_NAME).first()
-    if driver:
-        return driver
-    driver = Driver(
-        name=explainability.ML_RESIDUAL_DRIVER_NAME,
-        category="OTHER",
-        description="Synthetic driver representing the LightGBM residual model's contribution.",
-        default_lag_days=0,
-    )
-    db.add(driver)
-    db.flush()
-    return driver
-
-
 def _detect_regime_change(pct_changes: list[float]) -> bool:
     if len(pct_changes) < REGIME_CHANGE_WINDOW * 2:
         return False
@@ -64,6 +49,15 @@ def _detect_regime_change(pct_changes: list[float]) -> bool:
     return prior_vol > 0 and recent_vol > REGIME_CHANGE_MULTIPLIER * prior_vol
 
 
+def _select_best_metrics(backtest_metrics: dict[str, dict | None]) -> dict | None:
+    """Pick the candidate model with the lowest backtest MAE, not just whichever
+    key happens to be non-None first (that previously always preferred "ml")."""
+    available = [m for m in backtest_metrics.values() if m is not None]
+    if not available:
+        return None
+    return min(available, key=lambda m: m["mae"])
+
+
 def _driver_edge_strengths(db: Session, material_id: int) -> list[tuple[float, float]]:
     edges = (
         db.query(ComponentDriver)
@@ -72,6 +66,57 @@ def _driver_edge_strengths(db: Session, material_id: int) -> list[tuple[float, f
         .all()
     )
     return [(e.relationship_strength, e.confidence or 0.5) for e in edges]
+
+
+def _update_driver_edge_strengths(
+    db: Session, material_id: int, waterfall: list[dict]
+) -> None:
+    attribution_by_driver = {
+        row["label"]: abs(row["contribution_pct"]) / 100.0 for row in waterfall
+    }
+    edges = (
+        db.query(ComponentDriver, Driver)
+        .join(MaterialComponent, ComponentDriver.component_id == MaterialComponent.id)
+        .join(Driver, ComponentDriver.driver_id == Driver.id)
+        .filter(MaterialComponent.material_id == material_id)
+        .all()
+    )
+    for edge, driver in edges:
+        edge.relationship_strength = attribution_by_driver.get(driver.name, 0.0)
+
+
+def _refresh_cached_driver_attributions(
+    db: Session, forecast: Forecast, material: Material
+) -> None:
+    rows = (
+        db.query(ForecastContribution, Driver)
+        .join(Driver, ForecastContribution.driver_id == Driver.id)
+        .filter(ForecastContribution.forecast_id == forecast.id)
+        .filter(Driver.name != explainability.ML_RESIDUAL_DRIVER_NAME)
+        .all()
+    )
+    raw_rows = [
+        {
+            "driver_name": driver.name,
+            "contribution_value": contribution.contribution_value,
+            "direction": contribution.direction,
+        }
+        for contribution, driver in rows
+    ]
+    target_pct_change = (
+        forecast.point_forecast / material.current_price - 1 if material.current_price else None
+    )
+    waterfall = explainability.build_waterfall(raw_rows, target_pct_change=target_pct_change)
+    by_driver_name = {driver.name: contribution for contribution, driver in rows}
+    for row in waterfall:
+        contribution = by_driver_name.get(row["label"])
+        if contribution is None:
+            continue
+        contribution.contribution_value = row["contribution_value"]
+        contribution.contribution_pct = row["contribution_pct"]
+        contribution.direction = row["direction"]
+        contribution.rank = row["rank"]
+    _update_driver_edge_strengths(db, forecast.material_id, waterfall)
 
 
 def generate_forecast(db: Session, material: Material) -> Forecast | None:
@@ -107,11 +152,7 @@ def generate_forecast(db: Session, material: Material) -> Forecast | None:
     regime_change = _detect_regime_change(pct_changes)
     data_mode = confidence_ml.classify_data_mode(n, settings)
 
-    best_metrics = (
-        result.backtest_metrics.get("ml")
-        or result.backtest_metrics.get("driver")
-        or result.backtest_metrics.get("baseline")
-    )
+    best_metrics = _select_best_metrics(result.backtest_metrics)
 
     events = market_service.list_events_for_material(db, material.id, db_material=material)
     event_confidences = [e.event_confidence for e in events if e.event_confidence is not None]
@@ -173,12 +214,12 @@ def generate_forecast(db: Session, material: Material) -> Forecast | None:
     db.add(forecast)
     db.flush()
 
-    waterfall = explainability.build_waterfall(result.contributions, result.ml_pct_change)
+    waterfall = explainability.build_waterfall(
+        result.contributions, target_pct_change=result.ensemble_pct_change
+    )
+    _update_driver_edge_strengths(db, material.id, waterfall)
     for row in waterfall:
-        if row["label"] == explainability.ML_RESIDUAL_DRIVER_NAME:
-            driver_id = _get_or_create_ml_residual_driver(db).id
-        else:
-            driver_id = preprocessing.get_driver_id_by_name(db, row["label"])
+        driver_id = preprocessing.get_driver_id_by_name(db, row["label"])
         if driver_id is None:
             continue
         db.add(
@@ -218,6 +259,8 @@ def get_or_generate_forecast(db: Session, material: Material) -> Forecast | None
         .first()
     )
     if existing is not None:
+        _refresh_cached_driver_attributions(db, existing, material)
+        db.commit()
         return existing
     return generate_forecast(db, material)
 
@@ -228,7 +271,9 @@ def get_forecast_explanation(db: Session, material: Material) -> dict | None:
         return None
     contributions = (
         db.query(ForecastContribution)
+        .join(Driver, ForecastContribution.driver_id == Driver.id)
         .filter(ForecastContribution.forecast_id == forecast.id)
+        .filter(Driver.name != explainability.ML_RESIDUAL_DRIVER_NAME)
         .order_by(ForecastContribution.rank)
         .all()
     )

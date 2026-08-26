@@ -31,9 +31,10 @@ def shap_breakdown_for_ml_component(residual_result) -> list[dict]:
         return []
 
 
-def build_waterfall(driver_contributions: list[dict], ml_pct_change: float | None) -> list[dict]:
-    """Driver contributions + a single "ML Residual" line, ranked and with each
-    row's share of the total explained move (contribution_pct sums to ~100)."""
+def build_waterfall(
+    driver_contributions: list[dict], target_pct_change: float | None = None
+) -> list[dict]:
+    """Allocate the forecast move across real economic drivers."""
     rows = [
         {
             "label": row["driver_name"],
@@ -42,16 +43,23 @@ def build_waterfall(driver_contributions: list[dict], ml_pct_change: float | Non
         }
         for row in driver_contributions
     ]
-    if ml_pct_change is not None and abs(ml_pct_change) > 1e-6:
-        driver_sum = sum(r["contribution_value"] for r in driver_contributions)
-        ml_only = ml_pct_change - driver_sum
-        rows.append(
-            {
-                "label": ML_RESIDUAL_DRIVER_NAME,
-                "contribution_value": ml_only,
-                "direction": "POSITIVE" if ml_only >= 0 else "NEGATIVE",
-            }
-        )
+
+    if target_pct_change is not None and rows:
+        raw_total = sum(row["contribution_value"] for row in rows)
+        if abs(raw_total) > 1e-12:
+            scale = target_pct_change / raw_total
+            for row in rows:
+                row["contribution_value"] *= scale
+        else:
+            absolute_total = sum(abs(row["contribution_value"]) for row in rows)
+            if absolute_total > 0:
+                for row in rows:
+                    row["contribution_value"] = target_pct_change * abs(
+                        row["contribution_value"]
+                    ) / absolute_total
+
+        for row in rows:
+            row["direction"] = "POSITIVE" if row["contribution_value"] >= 0 else "NEGATIVE"
 
     total_abs = sum(abs(r["contribution_value"]) for r in rows) or 1.0
     rows.sort(key=lambda r: abs(r["contribution_value"]), reverse=True)

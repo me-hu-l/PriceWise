@@ -30,12 +30,12 @@ export function ModelDisagreement({ forecast }: { forecast: ForecastResponse }) 
         ))}
       </ul>
       {forecast.disagreement_level && (
-        <p className={`mt-2 text-xs font-medium ${disagreementTone[forecast.disagreement_level]}`}>
+        <p className={`mt-2 text-sm font-medium ${disagreementTone[forecast.disagreement_level]}`}>
           Disagreement: {forecast.disagreement_level}
         </p>
       )}
       {(forecast.mae != null || forecast.directional_accuracy != null) && (
-        <p className="mt-2 text-xs text-slate-500">
+        <p className="mt-2 text-sm text-slate-500">
           Backtest — MAE {forecast.mae?.toFixed(2)} · MAPE {forecast.mape?.toFixed(1)}% · directional
           accuracy {forecast.directional_accuracy != null ? `${(forecast.directional_accuracy * 100).toFixed(0)}%` : "—"}
         </p>

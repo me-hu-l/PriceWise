@@ -144,7 +144,7 @@ All tables live in `backend/app/db/models/`. Types shown are logical (SQLAlchemy
 | mae / rmse / mape / directional_accuracy / interval_coverage | float, nullable | walk-forward backtest metrics of the best available candidate (§26-27) |
 
 ## ForecastContribution *(Phase 2 — populated)*
-`forecast_id`, `driver_id` (a synthetic "ML Residual" Driver row represents the ML component), `contribution_value` (raw pct-change contribution, e.g. 0.041 = +4.1%), `contribution_pct` (share of total explained move, sums to ~100 across a forecast's rows), `direction`, `rank`.
+`forecast_id`, `driver_id` (a linked economic driver), `contribution_value` (allocated forecast pct-change contribution, e.g. 0.004 = +0.4%), `contribution_pct` (absolute share of the forecast move, sums to ~100 across a forecast's rows), `direction`, `rank`. The ML residual remains an internal model component and is not persisted as a forecast contribution or shown in this table.
 
 ## ConfidenceComponent *(Phase 2 — populated)*
 `forecast_id`, `data_score`, `driver_score`, `model_score`, `market_score`, `stability_score`, `overall_score`, `explanation`.

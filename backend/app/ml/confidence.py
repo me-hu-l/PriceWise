@@ -102,7 +102,7 @@ def compute_confidence(
 
     explanation_parts = [
         f"Data quality {data_score:.0f}/100 ({data_mode.replace('_', ' ').title()}, {n_observations} observations).",
-        f"Driver strength {driver_score:.0f}/100 (avg. knowledge-graph relationship strength × confidence).",
+        f"Driver strength {driver_score:.0f}/100 (average knowledge-graph relationship strength × confidence).",
         f"Model performance {model_score:.0f}/100 (walk-forward backtest directional accuracy/MAPE).",
         f"Market signals {market_score:.0f}/100 ({'no active events' if not event_confidences else 'based on related market event confidence/agreement'}).",
         f"Stability {stability_score:.0f}/100 (model disagreement: {disagreement_level}"

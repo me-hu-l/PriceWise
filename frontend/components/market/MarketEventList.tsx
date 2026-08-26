@@ -13,13 +13,14 @@ export function MarketEventList({ events }: { events: MarketEvent[] }) {
   }
   return (
     <Card title="Market intelligence">
-      <ul className="space-y-3">
+      <ul className="space-y-4">
         {events.map((e) => (
-          <li key={e.id} className="border-b border-slate-100 pb-3 last:border-0">
+          <li key={e.id} className="border-b border-slate-100 pb-4 last:border-0 last:pb-0">
             <p className="text-sm font-medium text-slate-900">
               {directionIcon[e.impact_direction] ?? "🟡"} {e.title}
             </p>
-            <p className="text-xs text-slate-500">
+            {e.description && <p className="mt-1 text-sm text-slate-600">{e.description}</p>}
+            <p className="mt-1 text-sm text-slate-500">
               {e.source_name ?? "Unknown source"} · {new Date(e.published_at).toLocaleDateString()}
               {" · "}
               {e.impact_magnitude} impact · {e.impact_horizon.toLowerCase()} horizon

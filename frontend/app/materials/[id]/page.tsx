@@ -9,6 +9,7 @@ import { DriverWaterfall } from "@/components/forecast/DriverWaterfall";
 import { ModelDisagreement } from "@/components/forecast/ModelDisagreement";
 import { PriceHistoryChart } from "@/components/materials/PriceHistoryChart";
 import { ComponentBreakdown } from "@/components/materials/ComponentBreakdown";
+import { KnowledgeGraph } from "@/components/materials/KnowledgeGraph";
 import { SupplierList } from "@/components/materials/SupplierList";
 import { DriverList } from "@/components/drivers/DriverList";
 import { MarketEventList } from "@/components/market/MarketEventList";
@@ -63,24 +64,27 @@ export default async function MaterialDetailPage({
         </p>
       </Card>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
         <ForecastCard forecast={forecast} />
         <ConfidenceBreakdown confidence={confidence} />
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
         <DriverWaterfall explanation={explanation} />
         <ModelDisagreement forecast={forecast} />
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <PriceHistoryChart history={history} />
+      <PriceHistoryChart history={history} forecast={forecast} />
+
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
         <ComponentBreakdown components={components} />
+        <SupplierList suppliers={suppliers} />
       </div>
+
+      <KnowledgeGraph materialName={material.name} components={components} drivers={drivers} />
 
       <DriverList drivers={drivers} />
       <MarketEventList events={events} />
-      <SupplierList suppliers={suppliers} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <NotAvailableCard title="Recommendation" phase="Phase 3" />

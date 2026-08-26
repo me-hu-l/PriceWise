@@ -1,4 +1,5 @@
 import type { Confidence, ConfidenceResponse } from "@/lib/types";
+import { splitSentences } from "@/lib/text";
 import { isInsufficientData } from "./ForecastCard";
 
 const components: Array<{ key: keyof Omit<Confidence, "forecast_id" | "overall_score" | "explanation">; label: string }> = [
@@ -43,7 +44,11 @@ export function ConfidenceBreakdown({ confidence }: { confidence: ConfidenceResp
           </li>
         ))}
       </ul>
-      <p className="mt-3 text-xs text-slate-500">{confidence.explanation}</p>
+      <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-500">
+        {splitSentences(confidence.explanation).map((sentence, i) => (
+          <li key={i}>{sentence}</li>
+        ))}
+      </ul>
     </div>
   );
 }

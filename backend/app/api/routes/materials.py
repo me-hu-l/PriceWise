@@ -50,7 +50,8 @@ def get_components(material_id: int, db: Session = Depends(get_db)):
 
 @router.get("/{material_id}/drivers", response_model=list[ComponentDriverRead])
 def get_drivers(material_id: int, db: Session = Depends(get_db)):
-    _get_material_or_404(db, material_id)
+    material = _get_material_or_404(db, material_id)
+    forecast_service.get_or_generate_forecast(db, material)
     return driver_service.list_material_component_drivers(db, material_id)
 
 
