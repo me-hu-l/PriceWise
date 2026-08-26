@@ -1,3 +1,6 @@
+import pytest
+
+
 def test_forecast_endpoint_returns_real_forecast(client, material_with_history):
     res = client.get(f"/api/materials/{material_with_history.id}/forecast")
     assert res.status_code == 200
@@ -22,10 +25,29 @@ def test_forecast_explanation_endpoint_returns_waterfall(client, material_with_h
     assert len(body["waterfall"]) >= 1
 
 
-def test_recommendation_still_stub_for_material_with_history(client, material_with_history):
-    """Recommendation stays a Phase 3 stub even once forecast/confidence are real."""
+def test_recommendation_endpoint_returns_rule_based_result(client, material_with_history):
     res = client.get(f"/api/materials/{material_with_history.id}/recommendation")
-    assert res.json()["status"] == "not_implemented"
+    body = res.json()
+    assert body["action"] in {"SHORT_LOCK", "LONG_LOCK", "WAIT", "NEGOTIATE", "STOCK", "DUAL_SOURCE", "MONITOR"}
+    assert 0 <= body["conviction"] <= 100
+    assert len(body["evidence"]) >= 2
+    assert body["forecast_direction"]
+    assert body["confidence_score"] >= 0
+    assert body["supply_risk"] in {"HIGH", "MANAGEABLE"}
+    assert body["decision_rule"]
+
+
+def test_supplier_claim_analysis_compares_forecast(client, material_with_history):
+    res = client.post(
+        "/api/supplier-claim/analyze",
+        json={"material_id": material_with_history.id, "claimed_change_pct": 9.0},
+    )
+    body = res.json()
+    assert res.status_code == 200
+    assert body["assessment"] in {"SUPPORTED", "PARTIALLY_SUPPORTED", "UNSUPPORTED"}
+    assert body["unexplained_change_pct"] == pytest.approx(
+        body["claimed_change_pct"] - body["market_supported_change_pct"]
+    )
 
 
 def test_post_forecast_endpoint_returns_real_forecast(client, material_with_history):

@@ -13,11 +13,11 @@ Supply chain teams struggle to forecast semiconductor material prices due to lim
 3. **HOW CONFIDENT** are we?
 4. **WHAT SHOULD PROCUREMENT DO?**
 
-## 2. Solution (current state — Phase 1)
+## 2. Solution (current state — Phase 3)
 
 Phase 1 delivers the **foundation**: a real database schema modeling the full material → component → driver → supplier knowledge graph, a working FastAPI backend serving that data, a seeded set of realistic demo materials, and a Next.js dashboard that can browse materials, see price history, composition, price drivers, market events, and suppliers.
 
-Forecasting, confidence scoring, recommendations, scenario simulation, and supplier-claim analysis are **explicitly deferred** to later phases (see [§10 Phase plan](#10-phase-plan)) and are exposed today as clean, structured "not yet implemented" API responses rather than fabricated numbers.
+Forecasting, confidence scoring, recommendations, and supplier-claim analysis are implemented as deterministic Phase 2/3 services. Scenario simulation remains deferred and is exposed as a structured "not yet implemented" API response rather than fabricated numbers.
 
 ## 3. Architecture
 
@@ -118,9 +118,9 @@ overall = 0.20*data_quality + 0.25*driver_strength + 0.25*model_performance
 
 Clamped to 0–100. Data quality comes from the LOW_DATA/LIMITED_DATA/MODERATE/STRONG thresholds (§10); driver strength from the knowledge-graph relationship strength × confidence; model performance from walk-forward backtest directional accuracy/MAPE; market signals from related `MarketEvent` confidence/agreement; stability from model disagreement (§15) and a lightweight regime-change check (§25, last-3-month volatility vs. prior period). This is a decision-support heuristic, not a statistically validated probability — the UI always calls it "forecast confidence score."
 
-## 9. Recommendation rules (planned — Phase 3)
+## 9. Recommendation rules (implemented — Phase 3)
 
-Rule-based (not LLM-driven) decision engine mapping forecast direction + confidence + supply risk to one of: `SHORT_LOCK`, `LONG_LOCK`, `WAIT`, `NEGOTIATE`, `STOCK`, `DUAL_SOURCE`, `MONITOR`. See roadmap §21 for the full rule table.
+Rule-based (not LLM-driven) decision engine mapping forecast direction + confidence + supply risk to one of: `SHORT_LOCK`, `LONG_LOCK`, `WAIT`, `NEGOTIATE`, `STOCK`, `DUAL_SOURCE`, `MONITOR`. Recommendations persist an evidence trail from forecast, supplier risk, and market events. Supplier claims are compared with the forecasted market-supported change and classified as `SUPPORTED`, `PARTIALLY_SUPPORTED`, or `UNSUPPORTED`. See roadmap §20–21.
 
 ## 10. Phase plan
 
@@ -128,7 +128,7 @@ Rule-based (not LLM-driven) decision engine mapping forecast direction + confide
 |---|---|---|
 | 1 | Repo, DB schema, migrations, seed data, FastAPI, Next.js, API client | ✅ Done |
 | 2 | Driver model, baseline forecast, ML residual, ensemble, SHAP, confidence | ✅ Done |
-| 3 | Recommendation engine, supplier claim analyzer, criticality, supply risk | Not started |
+| 3 | Recommendation engine, supplier claim analyzer, criticality, supply risk | ✅ Done |
 | 4 | Market event model, mock LLM extraction, event impact, source quality | Not started |
 | 5 | Scenario engine (what-if simulator) | Not started |
 | 6 | UX polish (executive dashboard, evidence trail, waterfall charts) | Not started |
@@ -142,10 +142,9 @@ Interactive OpenAPI docs are available at `http://localhost:8000/docs` once the 
 - `POST /api/forecast` — real (Phase 2), same pipeline as the GET forecast endpoint
 - `GET /api/drivers`, `GET /api/suppliers`, `GET /api/market/events`, `GET /api/dashboard/summary`
 
-Stub (structured `not_implemented` response) endpoints, reserved for Phase 3/5:
+Stub (structured `not_implemented` response) endpoints, reserved for Phase 5:
 
-- `GET /api/materials/{id}/recommendation`
-- `POST /api/scenario`, `POST /api/supplier-claim/analyze`
+- `POST /api/scenario`
 
 ## 12. Future improvements
 

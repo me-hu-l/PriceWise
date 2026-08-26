@@ -1,5 +1,4 @@
-"""Recommendation/scenario/supplier-claim-analyze remain Phase 3/5 stubs — never
-fabricate numbers, only a structured not-implemented payload. Forecast/confidence/
+"""Scenario remains a Phase 5 stub. Forecast/confidence/
 explanation became real in Phase 2 (see test_forecast_api.py) but still return a
 structured "insufficient_data" payload (not fake numbers) when history is too sparse."""
 
@@ -25,11 +24,10 @@ def test_confidence_endpoint_insufficient_data(client, seeded_material):
     assert "overall_score" not in body
 
 
-def test_recommendation_endpoint_is_stub(client, seeded_material):
+def test_recommendation_endpoint_returns_insufficient_data(client, seeded_material):
     res = client.get(f"/api/materials/{seeded_material.id}/recommendation")
     body = res.json()
-    assert body["status"] == "not_implemented"
-    assert "action" not in body
+    assert body["status"] == "insufficient_data"
 
 
 def test_post_forecast_insufficient_data(client, seeded_material):
@@ -43,9 +41,9 @@ def test_post_scenario_is_stub(client, seeded_material):
 
 
 
-def test_post_supplier_claim_analyze_is_stub(client, seeded_material):
+def test_post_supplier_claim_analyze_returns_insufficient_data(client, seeded_material):
     res = client.post(
         "/api/supplier-claim/analyze",
         json={"material_id": seeded_material.id, "claimed_change_pct": 9.0},
     )
-    assert res.json()["status"] == "not_implemented"
+    assert res.status_code == 422

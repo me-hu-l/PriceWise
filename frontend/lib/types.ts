@@ -111,6 +111,34 @@ export interface NotImplementedResponse {
   reason: string;
 }
 
+export interface Evidence {
+  id: number;
+  evidence_type: string;
+  title: string;
+  description: string | null;
+  source: string | null;
+  weight: number | null;
+  created_at: string;
+}
+
+export interface Recommendation {
+  id: number;
+  material_id: number;
+  forecast_id: number | null;
+  action: string;
+  conviction: number;
+  recommended_duration: string | null;
+  reason: string | null;
+  created_at: string;
+  evidence: Evidence[];
+  forecast_direction: string;
+  forecast_change_pct: number;
+  confidence_score: number;
+  supply_risk: string;
+  supply_risk_factors: string[];
+  decision_rule: string;
+}
+
 /** Returned instead of a forecast/confidence when a material genuinely lacks history. */
 export interface InsufficientDataResponse {
   status: "insufficient_data";
@@ -172,4 +200,5 @@ export interface Confidence {
 export type ForecastResponse = Forecast | InsufficientDataResponse;
 export type ForecastExplanationResponse = ForecastExplanation | InsufficientDataResponse;
 export type ConfidenceResponse = Confidence | InsufficientDataResponse;
+export type RecommendationResponse = Recommendation | InsufficientDataResponse;
 

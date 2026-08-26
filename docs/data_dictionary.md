@@ -149,9 +149,9 @@ All tables live in `backend/app/db/models/`. Types shown are logical (SQLAlchemy
 ## ConfidenceComponent *(Phase 2 — populated)*
 `forecast_id`, `data_score`, `driver_score`, `model_score`, `market_score`, `stability_score`, `overall_score`, `explanation`.
 
-## Recommendation *(Phase 3 — table exists, unpopulated)*
+## Recommendation *(Phase 3 — populated)*
 `material_id`, `forecast_id`, `action` (`LOCK`/`SHORT_LOCK`/`WAIT`/`NEGOTIATE`/`STOCK`/`DUAL_SOURCE`/`MONITOR`), `conviction`, `recommended_duration`, `reason`.
 
 
-## Evidence *(Phase 3)*
+## Evidence *(Phase 3 — populated for recommendations)*
 `recommendation_id`, `evidence_type`, `title`, `description`, `source`, `weight`.

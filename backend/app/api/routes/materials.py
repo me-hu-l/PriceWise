@@ -5,11 +5,12 @@ from sqlalchemy.orm import Session
 from fastapi import Depends
 
 from app.db.database import get_db
-from app.schemas.common import InsufficientDataResponse, NotImplementedResponse
+from app.schemas.common import InsufficientDataResponse
 from app.schemas.confidence import ConfidenceRead
 from app.schemas.driver import ComponentDriverRead
 from app.schemas.forecast import ForecastExplanationRead, ForecastRead
 from app.schemas.market_event import MarketEventRead
+from app.schemas.recommendation import RecommendationRead
 from app.schemas.material import MaterialComponentRead, MaterialRead, PriceObservationRead
 from app.schemas.supplier import SupplierQuoteRead, SupplierRead
 from app.services import (
@@ -116,7 +117,10 @@ def get_confidence(material_id: int, db: Session = Depends(get_db)):
     return confidence
 
 
-@router.get("/{material_id}/recommendation", response_model=NotImplementedResponse)
+@router.get("/{material_id}/recommendation", response_model=Union[RecommendationRead, InsufficientDataResponse])
 def get_recommendation(material_id: int, db: Session = Depends(get_db)):
-    _get_material_or_404(db, material_id)
-    return recommendation_service.get_recommendation(material_id)
+    material = _get_material_or_404(db, material_id)
+    recommendation = recommendation_service.get_recommendation(db, material)
+    if recommendation is None:
+        return InsufficientDataResponse(reason="Insufficient data for a recommendation.")
+    return recommendation

@@ -6,6 +6,7 @@ import type {
   MaterialComponent,
   MarketEvent,
   NotImplementedResponse,
+  RecommendationResponse,
   ForecastExplanationResponse,
   ForecastResponse,
   PriceObservation,
@@ -40,7 +41,7 @@ export const api = {
   getForecastExplanation: (id: number) =>
     apiFetch<ForecastExplanationResponse>(`/api/materials/${id}/forecast/explanation`),
   getConfidence: (id: number) => apiFetch<ConfidenceResponse>(`/api/materials/${id}/confidence`),
-  getRecommendation: (id: number) => apiFetch<NotImplementedResponse>(`/api/materials/${id}/recommendation`),
+  getRecommendation: (id: number) => apiFetch<RecommendationResponse>(`/api/materials/${id}/recommendation`),
   listMarketEvents: () => apiFetch<MarketEvent[]>("/api/market/events"),
   getDashboardSummary: () => apiFetch<DashboardSummary>("/api/dashboard/summary"),
 };

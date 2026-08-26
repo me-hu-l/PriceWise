@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import { api } from "@/lib/api";
 import { Card } from "@/components/common/Card";
 import { RiskIndicator } from "@/components/common/RiskIndicator";
-import { NotAvailableCard } from "@/components/forecast/NotAvailableCard";
 import { ForecastCard } from "@/components/forecast/ForecastCard";
 import { ConfidenceBreakdown } from "@/components/forecast/ConfidenceBreakdown";
 import { DriverWaterfall } from "@/components/forecast/DriverWaterfall";
@@ -13,6 +12,7 @@ import { KnowledgeGraph } from "@/components/materials/KnowledgeGraph";
 import { SupplierList } from "@/components/materials/SupplierList";
 import { DriverList } from "@/components/drivers/DriverList";
 import { MarketEventList } from "@/components/market/MarketEventList";
+import { RecommendationCard } from "@/components/recommendations/RecommendationCard";
 
 export default async function MaterialDetailPage({
   params,
@@ -30,7 +30,7 @@ export default async function MaterialDetailPage({
     notFound();
   }
 
-  const [components, history, drivers, events, suppliers, forecast, confidence, explanation] =
+  const [components, history, drivers, events, suppliers, forecast, confidence, explanation, recommendation] =
     await Promise.all([
       api.getComponents(materialId),
       api.getHistory(materialId),
@@ -40,6 +40,7 @@ export default async function MaterialDetailPage({
       api.getForecast(materialId),
       api.getConfidence(materialId),
       api.getForecastExplanation(materialId),
+      api.getRecommendation(materialId),
     ]);
 
   return (
@@ -86,9 +87,7 @@ export default async function MaterialDetailPage({
       <DriverList drivers={drivers} />
       <MarketEventList events={events} />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <NotAvailableCard title="Recommendation" phase="Phase 3" />
-      </div>
+      <RecommendationCard recommendation={recommendation} />
     </div>
   );
 }
