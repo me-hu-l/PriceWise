@@ -130,7 +130,7 @@ Rule-based (not LLM-driven) decision engine mapping forecast direction + confide
 | 2 | Driver model, baseline forecast, ML residual, ensemble, SHAP, confidence | ✅ Done |
 | 3 | Recommendation engine, supplier claim analyzer, criticality, supply risk | ✅ Done |
 | 4 | Market event model, mock LLM extraction, event impact, source quality | Not started |
-| 5 | Scenario engine (what-if simulator) | Not started |
+| 5 | Scenario engine (what-if simulator) | ✅ Done |
 | 6 | UX polish (executive dashboard, evidence trail, waterfall charts) | Not started |
 
 ## 11. API documentation
@@ -142,11 +142,10 @@ Interactive OpenAPI docs are available at `http://localhost:8000/docs` once the 
 - `GET /api/materials/{id}/driver-observations` — involved driver history with next-period projected values
 - `POST /api/materials/{id}/history/upload` — upload a custom CSV overlay (`date`, `price`; optional `currency`, `unit`) without changing seeded observations
 - `POST /api/forecast` — real (Phase 2), same pipeline as the GET forecast endpoint
+- `POST /api/scenario` — what-if next-month driver overrides with normal-versus-scenario forecast comparison
 - `GET /api/drivers`, `GET /api/suppliers`, `GET /api/market/events`, `GET /api/dashboard/summary`
 
-Stub (structured `not_implemented` response) endpoints, reserved for Phase 5:
-
-- `POST /api/scenario`
+Stub (structured `not_implemented` response) endpoints: none in the current Phase 2–5 vertical slice.
 
 ## 12. Future improvements
 

@@ -1,4 +1,4 @@
-"""Scenario remains a Phase 5 stub. Forecast/confidence/
+"""Forecast/confidence/
 explanation became real in Phase 2 (see test_forecast_api.py) but still return a
 structured "insufficient_data" payload (not fake numbers) when history is too sparse."""
 
@@ -35,9 +35,12 @@ def test_post_forecast_insufficient_data(client, seeded_material):
     assert res.json()["status"] == "insufficient_data"
 
 
-def test_post_scenario_is_stub(client, seeded_material):
-    res = client.post("/api/scenario", json={"fx_change": 0.02})
-    assert res.json()["status"] == "not_implemented"
+def test_post_scenario_returns_insufficient_data(client, seeded_material):
+    res = client.post(
+        "/api/scenario",
+        json={"material_id": seeded_material.id, "driver_changes": {"Rare Earth Index": 0.02}},
+    )
+    assert res.status_code == 422
 
 
 

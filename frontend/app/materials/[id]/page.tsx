@@ -6,6 +6,7 @@ import { ForecastCard } from "@/components/forecast/ForecastCard";
 import { ConfidenceBreakdown } from "@/components/forecast/ConfidenceBreakdown";
 import { DriverWaterfall } from "@/components/forecast/DriverWaterfall";
 import { ModelDisagreement } from "@/components/forecast/ModelDisagreement";
+import { ScenarioSimulator } from "@/components/forecast/ScenarioSimulator";
 import { PriceHistoryChart } from "@/components/materials/PriceHistoryChart";
 import { PriceHistoryUpload } from "@/components/materials/PriceHistoryUpload";
 import { ComponentBreakdown } from "@/components/materials/ComponentBreakdown";
@@ -80,6 +81,8 @@ export default async function MaterialDetailPage({
       </div>
 
       <DriverHistoryCharts histories={driverHistories} />
+
+      <ScenarioSimulator materialId={materialId} histories={driverHistories} />
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
         <ConfidenceBreakdown confidence={confidence} />

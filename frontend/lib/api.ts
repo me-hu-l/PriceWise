@@ -12,6 +12,7 @@ import type {
   ForecastResponse,
   PriceObservation,
   PriceUploadResult,
+  ScenarioComparison,
   Supplier,
   SupplierQuote,
 } from "./types";
@@ -47,6 +48,34 @@ export const api = {
       body,
       headers: {},
     });
+  },
+  runScenario: async (materialId: number, driverChanges: Record<string, number>) => {
+    const response = await apiFetch<Partial<ScenarioComparison> & {
+      normal_forecast?: ScenarioComparison["normal"];
+      scenario_forecast?: ScenarioComparison["scenario"];
+    }>("/api/scenario", {
+      method: "POST",
+      body: JSON.stringify({ material_id: materialId, driver_changes: driverChanges }),
+    });
+    const normal = response.normal ?? response.normal_forecast;
+    const scenario = response.scenario ?? response.scenario_forecast;
+    if (!normal || !scenario) {
+      throw new Error("Scenario response did not include normal and what-if forecasts.");
+    }
+    const normalizeSnapshot = (snapshot: ScenarioComparison["normal"]): ScenarioComparison["normal"] => ({
+      ...snapshot,
+      recommendation_duration: snapshot.recommendation_duration ?? "See recommendation below",
+      recommendation_conviction: snapshot.recommendation_conviction ?? snapshot.confidence_score ?? 0,
+      forecast_change_pct: snapshot.forecast_change_pct ?? 0,
+      supply_risk: snapshot.supply_risk ?? "UNKNOWN",
+      supply_risk_factors: snapshot.supply_risk_factors ?? [],
+      decision_rule: snapshot.decision_rule ?? snapshot.recommendation_reason ?? "No decision rule was returned.",
+    });
+    return {
+      material_id: response.material_id ?? materialId,
+      normal: normalizeSnapshot(normal),
+      scenario: normalizeSnapshot(scenario),
+    } satisfies ScenarioComparison;
   },
   getSuppliers: (id: number) => apiFetch<Supplier[]>(`/api/materials/${id}/suppliers`),
   getSupplierClaims: (id: number) => apiFetch<SupplierQuote[]>(`/api/materials/${id}/supplier-claims`),

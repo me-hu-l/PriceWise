@@ -131,7 +131,9 @@ def generate_forecast(db: Session, material: Material) -> Forecast | None:
     dates = price_df["date"].tolist()
     driver_df = preprocessing.build_driver_pct_change_matrix(db, material.id, dates)
 
-    result = ensemble.build_ensemble(price_df, driver_df)
+    result = ensemble.build_ensemble(
+        price_df, driver_df, driver_weight_boost=ensemble.DRIVER_WEIGHT_BOOST
+    )
 
     current_price = float(price_df["price"].iloc[-1])
     point_forecast = current_price * (1 + result.ensemble_pct_change)

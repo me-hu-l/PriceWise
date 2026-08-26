@@ -46,6 +46,30 @@ export interface PriceUploadResult {
   latest_price: number;
 }
 
+export interface ScenarioForecast {
+  point_forecast: number;
+  lower_bound: number;
+  upper_bound: number;
+  direction: string;
+  confidence_score: number;
+  contributions: ForecastContributionRow[];
+  driver_weights: Record<string, number>;
+  recommendation_action: string;
+  recommendation_duration: string;
+  recommendation_conviction: number;
+  forecast_change_pct: number;
+  supply_risk: string;
+  supply_risk_factors: string[];
+  decision_rule: string;
+  recommendation_reason: string;
+}
+
+export interface ScenarioComparison {
+  material_id: number;
+  normal: ScenarioForecast;
+  scenario: ScenarioForecast;
+}
+
 export interface ComponentDriver {
   id: number;
   component_id: number;

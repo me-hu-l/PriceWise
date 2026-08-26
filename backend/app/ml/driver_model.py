@@ -32,7 +32,11 @@ def _project_next_driver_changes(driver_df: pd.DataFrame, momentum_window: int =
     return {col: float(driver_df[col].tail(window).mean()) for col in driver_df.columns}
 
 
-def fit_driver_model(price_pct_change: pd.Series, driver_pct_change: pd.DataFrame) -> DriverModelResult | None:
+def fit_driver_model(
+    price_pct_change: pd.Series,
+    driver_pct_change: pd.DataFrame,
+    projected_driver_changes: dict[str, float] | None = None,
+) -> DriverModelResult | None:
     """Fit on rows [1:] of both series (row 0 has no pct_change). Returns None if
     there are no relevant drivers or too few rows to fit anything meaningful."""
     if driver_pct_change.shape[1] == 0 or len(price_pct_change) < 3:
@@ -46,6 +50,14 @@ def fit_driver_model(price_pct_change: pd.Series, driver_pct_change: pd.DataFram
 
     fitted = model.predict(X.values)
     projected = _project_next_driver_changes(X)
+    if projected_driver_changes:
+        projected.update(
+            {
+                name: float(value)
+                for name, value in projected_driver_changes.items()
+                if name in projected
+            }
+        )
     forecast_pct_change = float(model.intercept_) + sum(
         model.coef_[i] * projected[col] for i, col in enumerate(X.columns)
     )

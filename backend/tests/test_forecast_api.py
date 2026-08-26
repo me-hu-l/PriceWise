@@ -60,6 +60,27 @@ def test_supplier_claim_analysis_compares_forecast(client, material_with_history
     )
 
 
+def test_scenario_compares_normal_and_driver_override(client, material_with_history):
+    res = client.post(
+        "/api/scenario",
+        json={"material_id": material_with_history.id, "driver_changes": {"Test Energy Index": 0.15}},
+    )
+    body = res.json()
+    assert res.status_code == 200
+    assert body["normal"]["point_forecast"] != body["scenario"]["point_forecast"]
+    assert body["normal"]["recommendation_action"] != "NORMAL FORECAST"
+    assert body["normal"]["driver_weights"] == body["scenario"]["driver_weights"]
+    regular = client.get(f"/api/materials/{material_with_history.id}/forecast").json()
+    assert regular["point_forecast"] == body["normal"]["point_forecast"]
+    assert body["normal"]["recommendation_duration"]
+    assert body["scenario"]["recommendation_duration"]
+    assert 0 <= body["scenario"]["recommendation_conviction"] <= 100
+    assert body["scenario"]["supply_risk"] in {"HIGH", "MANAGEABLE"}
+    assert body["scenario"]["decision_rule"]
+    assert body["scenario"]["contributions"]
+    assert body["scenario"]["recommendation_action"]
+
+
 def test_post_forecast_endpoint_returns_real_forecast(client, material_with_history):
     res = client.post("/api/forecast", json={"material_id": material_with_history.id})
     assert "point_forecast" in res.json()

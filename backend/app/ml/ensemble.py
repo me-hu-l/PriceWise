@@ -19,6 +19,7 @@ from app.ml.residual_model import fit_residual_model
 DISAGREEMENT_MEDIUM_THRESHOLD = 0.01  # 1 percentage point spread
 DISAGREEMENT_HIGH_THRESHOLD = 0.03  # 3 percentage points spread
 INTERVAL_Z = 1.28  # ~80% two-sided normal interval
+DRIVER_WEIGHT_BOOST = 0.25
 
 
 @dataclass
@@ -35,10 +36,11 @@ class EnsembleResult:
     residual_result: object | None = None
 
 
-def _fallback_weights(driver_available: bool) -> dict[str, float]:
+def _fallback_weights(driver_available: bool, driver_weight_boost: float = 0.0) -> dict[str, float]:
     """No backtest possible (too little history) — favor the driver model per section 10."""
     if driver_available:
-        return {"baseline": 0.3, "driver": 0.7, "ml": 0.0}
+        driver_weight = min(0.95, 0.7 + driver_weight_boost)
+        return {"baseline": 1.0 - driver_weight, "driver": driver_weight, "ml": 0.0}
     return {"baseline": 1.0, "driver": 0.0, "ml": 0.0}
 
 
@@ -66,11 +68,18 @@ def _disagreement_level(pct_changes: list[float]) -> str:
     return "LOW"
 
 
-def build_ensemble(price_df: pd.DataFrame, driver_df: pd.DataFrame) -> EnsembleResult:
+def build_ensemble(
+    price_df: pd.DataFrame,
+    driver_df: pd.DataFrame,
+    projected_driver_changes: dict[str, float] | None = None,
+    driver_weight_boost: float = 0.0,
+) -> EnsembleResult:
     prices = price_df["price"].tolist()
     baseline_pct = baselines.exponential_smoothing(prices) / prices[-1] - 1
 
-    driver_result = fit_driver_model(price_df["pct_change"], driver_df)
+    driver_result = fit_driver_model(
+        price_df["pct_change"], driver_df, projected_driver_changes=projected_driver_changes
+    )
     driver_pct = driver_result.forecast_pct_change if driver_result else None
     contributions = driver_contributions(driver_result) if driver_result else []
 
@@ -87,7 +96,15 @@ def build_ensemble(price_df: pd.DataFrame, driver_df: pd.DataFrame) -> EnsembleR
     if folds and any(m is not None for m in metrics.values()):
         weights = _weights_from_backtest(metrics)
     else:
-        weights = _fallback_weights(driver_available=driver_result is not None)
+        weights = _fallback_weights(
+            driver_available=driver_result is not None,
+            driver_weight_boost=driver_weight_boost,
+        )
+
+    if driver_weight_boost and driver_result is not None and folds:
+        weights["driver"] = weights.get("driver", 0.0) + driver_weight_boost
+        total_weight = sum(weights.values()) or 1.0
+        weights = {key: value / total_weight for key, value in weights.items()}
 
     candidates = {"baseline": baseline_pct, "driver": driver_pct, "ml": ml_pct}
     available = {k: v for k, v in candidates.items() if v is not None}
