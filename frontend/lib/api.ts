@@ -27,7 +27,9 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     headers: isFormData ? init?.headers : { "Content-Type": "application/json", ...init?.headers },
   });
   if (!res.ok) {
-    throw new Error(`API request failed: ${init?.method ?? "GET"} ${path} (${res.status})`);
+    const error = await res.json().catch(() => null);
+    const detail = typeof error?.detail === "string" ? `: ${error.detail}` : "";
+    throw new Error(`API request failed: ${init?.method ?? "GET"} ${path} (${res.status})${detail}`);
   }
   return res.json() as Promise<T>;
 }

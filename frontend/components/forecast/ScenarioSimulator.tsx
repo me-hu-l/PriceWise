@@ -117,8 +117,13 @@ export function ScenarioSimulator({ materialId, histories }: { materialId: numbe
           <p className="mt-1 text-xs text-slate-500">Set each driver&apos;s next-month change, then compare it with the normal forecast.</p>
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => setExpanded((value) => !value)} className="text-xs font-medium text-slate-500 underline underline-offset-2">
-            {expanded ? "Roll up simulator" : "Show simulator"}
+          <button
+            type="button"
+            onClick={() => setExpanded((value) => !value)}
+            aria-expanded={expanded}
+            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+          >
+            {expanded ? "Hide simulator" : "Show simulator"}
           </button>
           <button type="button" onClick={run} disabled={loading || histories.length === 0} className="rounded-md bg-slate-900 px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
             {loading ? "Calculating..." : "Run scenario"}

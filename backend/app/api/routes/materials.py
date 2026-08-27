@@ -92,6 +92,12 @@ async def upload_price_history(
         observations = []
         for line_number, row in enumerate(reader, start=2):
             normalized = {str(key).strip().lower(): (value or "").strip() for key, value in row.items()}
+            if (
+                "material_code" in normalized
+                and normalized["material_code"]
+                and normalized["material_code"] != material.material_code
+            ):
+                continue
             observations.append(
                 {
                     "date": date.fromisoformat(normalized["date"]),
@@ -103,7 +109,9 @@ async def upload_price_history(
             if observations[-1]["price"] <= 0:
                 raise ValueError(f"Line {line_number}: price must be positive.")
         if len(observations) < 3:
-            raise ValueError("Upload at least 3 observations.")
+            raise ValueError(
+                f"Upload at least 3 observations for material {material.material_code}."
+            )
         if any(row["date"] > date.today() for row in observations):
             raise ValueError("Observation dates cannot be in the future.")
         if len({row["date"] for row in observations}) != len(observations):

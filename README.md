@@ -57,6 +57,8 @@ python -m venv .venv
 .venv\Scripts\uvicorn app.main:app --reload --port 8000
 ```
 
+The backend dependency set is pinned for Python 3.14.7. Recreate the virtual environment after upgrading Python so compiled packages such as NumPy, LightGBM, and SHAP use Python 3.14 wheels.
+
 Copy `.env.example` to `.env` at the repo root first if you want to override defaults (SQLite is used out of the box, no `.env` required).
 
 ### Frontend

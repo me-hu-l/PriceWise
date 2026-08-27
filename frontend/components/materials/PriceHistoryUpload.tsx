@@ -39,7 +39,7 @@ export function PriceHistoryUpload({ materialId }: { materialId: number }) {
         </label>
       </div>
       <p className="mt-2 text-xs text-slate-500">
-        Required columns: <span className="font-medium">date, price</span>. Optional: currency, unit. Minimum 3 unique dates.
+        Required columns: <span className="font-medium">date, price</span>. Optional: currency, unit, material_code. Files with material_code automatically use the current material&apos;s rows.
       </p>
       <a href="/sample_ceria_cmp_slurry_price_history.csv" download className="mt-2 inline-block text-xs font-medium text-teal-700 underline underline-offset-2">
         Download Ceria CMP Slurry sample CSV

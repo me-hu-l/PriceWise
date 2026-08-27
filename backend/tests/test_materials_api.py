@@ -63,6 +63,23 @@ def test_upload_history_uses_overlay_and_preserves_seeded_rows(
     )
 
 
+def test_upload_history_filters_combined_material_csv(client, seeded_material):
+    csv_content = (
+        "material_code,date,price\n"
+        "OTHER,2026-01-01,900\n"
+        "MAT-TEST,2026-01-01,1300\n"
+        "MAT-TEST,2026-02-01,1315\n"
+        "MAT-TEST,2026-03-01,1330\n"
+        "OTHER,2026-03-01,950\n"
+    )
+    res = client.post(
+        f"/api/materials/{seeded_material.id}/history/upload",
+        files={"file": ("combined-history.csv", csv_content, "text/csv")},
+    )
+    assert res.status_code == 200
+    assert res.json()["observation_count"] == 3
+
+
 def test_get_suppliers(client, seeded_material):
     res = client.get(f"/api/materials/{seeded_material.id}/suppliers")
     assert res.status_code == 200
