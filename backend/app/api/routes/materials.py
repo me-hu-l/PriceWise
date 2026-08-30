@@ -20,7 +20,12 @@ from app.schemas.material import (
     PriceObservationRead,
     PriceUploadResult,
 )
-from app.schemas.supplier import SupplierQuoteRead, SupplierRead
+from app.schemas.supplier import (
+    SupplierQuoteBatchAnalysisRequest,
+    SupplierQuoteBatchAnalysisResponse,
+    SupplierQuoteRead,
+    SupplierRead,
+)
 from app.services import (
     confidence_service,
     driver_service,
@@ -190,3 +195,18 @@ def get_recommendation(material_id: int, db: Session = Depends(get_db)):
     if recommendation is None:
         return InsufficientDataResponse(reason="Insufficient data for a recommendation.")
     return recommendation
+
+
+@router.post("/{material_id}/suppliers/analyze-quotes", response_model=SupplierQuoteBatchAnalysisResponse)
+def analyze_material_supplier_quotes(
+    material_id: int,
+    payload: SupplierQuoteBatchAnalysisRequest,
+    db: Session = Depends(get_db),
+):
+    material = _get_material_or_404(db, material_id)
+    analysis = recommendation_service.analyze_supplier_quotes(
+        db, material, payload.driver_changes, payload.quotes
+    )
+    if analysis is None:
+        raise HTTPException(status_code=422, detail="Insufficient data for supplier quote analysis")
+    return analysis

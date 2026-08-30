@@ -206,9 +206,7 @@ export function KnowledgeGraph({
                 >
                   {c.percentage_of_cost}% of cost
                 </text>
-                <title>
-                  {c.component_name}: {c.percentage_of_cost}% of material cost
-                </title>
+                <title>{c.component_name}: {c.percentage_of_cost}% of material cost</title>
               </g>
             );
           })}
@@ -256,9 +254,7 @@ export function KnowledgeGraph({
                 >
                   strength {(ud.maxStrength * 100).toFixed(0)}%
                 </text>
-                <title>
-                  {ud.name} ({ud.category}): relationship strength up to {(ud.maxStrength * 100).toFixed(0)}%
-                </title>
+                <title>{ud.name} ({ud.category}): relationship strength up to {(ud.maxStrength * 100).toFixed(0)}%</title>
               </g>
             );
           })}

@@ -15,6 +15,7 @@ import type {
   ScenarioComparison,
   Supplier,
   SupplierQuote,
+  SupplierQuoteBatchAnalysisResponse,
 } from "./types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -80,7 +81,21 @@ export const api = {
     } satisfies ScenarioComparison;
   },
   getSuppliers: (id: number) => apiFetch<Supplier[]>(`/api/materials/${id}/suppliers`),
+  listAllSuppliers: () => apiFetch<Supplier[]>("/api/suppliers"),
   getSupplierClaims: (id: number) => apiFetch<SupplierQuote[]>(`/api/materials/${id}/supplier-claims`),
+  analyzeSupplierQuotes: (
+    materialId: number,
+    quotes: { supplier_id: number; quoted_price: number; valid_until?: string | null; reason?: string | null }[],
+    driverChanges?: Record<string, number> | null
+  ) =>
+    apiFetch<SupplierQuoteBatchAnalysisResponse>(`/api/materials/${materialId}/suppliers/analyze-quotes`, {
+      method: "POST",
+      body: JSON.stringify({
+        material_id: materialId,
+        driver_changes: driverChanges ?? null,
+        quotes,
+      }),
+    }),
   getMaterialMarketEvents: (id: number) => apiFetch<MarketEvent[]>(`/api/materials/${id}/market-events`),
   getForecast: (id: number) => apiFetch<ForecastResponse>(`/api/materials/${id}/forecast`),
   getForecastExplanation: (id: number) =>

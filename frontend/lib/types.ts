@@ -142,6 +142,52 @@ export interface SupplierQuote {
   valid_until: string | null;
 }
 
+export interface SupplierQuoteItemInput {
+  supplier_id: number;
+  quoted_price: number;
+  valid_until?: string | null;
+  reason?: string | null;
+}
+
+export interface SupplierQuoteBatchAnalysisRequest {
+  material_id: number;
+  driver_changes?: Record<string, number> | null;
+  quotes: SupplierQuoteItemInput[];
+}
+
+export interface AnalyzedSupplierQuote {
+  supplier_id: number;
+  supplier_name: string;
+  supplier_code: string;
+  country: string | null;
+  qualification_status: string;
+  lead_time_days: number | null;
+  share_of_supply: number | null;
+  risk_score: number | null;
+  single_source: boolean;
+  quoted_price: number;
+  baseline_quoted_price: number | null;
+  is_custom_quote: boolean;
+  active_forecast_price: number;
+  quote_vs_forecast_gap_pct: number;
+  claimed_change_pct: number;
+  market_supported_change_pct: number;
+  unexplained_change_pct: number;
+  assessment: string;
+  recommendation: string;
+  recommendation_reason: string;
+  guidance: string;
+}
+
+export interface SupplierQuoteBatchAnalysisResponse {
+  material_id: number;
+  active_forecast_price: number;
+  active_forecast_direction: string;
+  confidence_score: number;
+  is_scenario: boolean;
+  analyzed_quotes: AnalyzedSupplierQuote[];
+}
+
 export interface DashboardSummary {
   materials_monitored: number;
   high_or_critical_criticality: number;

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models import Evidence, Forecast, Material, Recommendation, Supplier
 from app.schemas.recommendation import SupplierClaimAnalysis
+from app.schemas.supplier import AnalyzedSupplierQuote, SupplierQuoteBatchAnalysisResponse
 from app.services import forecast_service, market_service, supplier_service
 
 
@@ -221,4 +222,137 @@ def analyze_supplier_claim(db: Session, material: Material, claimed_change_pct: 
         unexplained_change_pct=unexplained,
         assessment=assessment,
         guidance=guidance,
+    )
+
+
+def analyze_supplier_quotes(
+    db: Session,
+    material: Material,
+    driver_changes: dict[str, float] | None,
+    quotes: list,
+) -> SupplierQuoteBatchAnalysisResponse | None:
+    from app.schemas.supplier import AnalyzedSupplierQuote, SupplierQuoteBatchAnalysisResponse
+    from app.services import scenario_service
+
+    has_scenario = bool(
+        driver_changes and any(abs(float(val)) > 0.0001 for val in driver_changes.values())
+    )
+
+    if has_scenario:
+        scenario_comp = scenario_service.run_scenario(db, material, driver_changes)
+        if scenario_comp is None:
+            return None
+        active_forecast_price = scenario_comp.scenario.point_forecast
+        active_direction = scenario_comp.scenario.direction
+        confidence_score = scenario_comp.scenario.confidence_score
+        is_scenario = True
+    else:
+        forecast = forecast_service.get_or_generate_forecast(db, material)
+        if forecast is None:
+            return None
+        active_forecast_price = forecast.point_forecast
+        active_direction = forecast.direction
+        confidence_score = forecast.confidence_score
+        is_scenario = False
+
+    db_quotes = supplier_service.list_quotes_for_material(db, material.id)
+    baseline_quote_by_supplier = {q.supplier_id: q.quoted_price for q in db_quotes}
+
+    analyzed_list = []
+    for q_input in quotes:
+        supplier_id = getattr(q_input, "supplier_id", None) or q_input.get("supplier_id")
+        quoted_price = getattr(q_input, "quoted_price", None) or q_input.get("quoted_price")
+        if supplier_id is None or quoted_price is None:
+            continue
+
+        supplier = db.get(Supplier, supplier_id)
+        if supplier is None:
+            continue
+
+        baseline_price = baseline_quote_by_supplier.get(supplier.id)
+        is_custom_quote = (
+            baseline_price is not None and abs(quoted_price - baseline_price) > 0.01
+        ) or (baseline_price is None)
+
+        gap_pct = (
+            ((quoted_price - active_forecast_price) / active_forecast_price) * 100
+            if active_forecast_price
+            else 0.0
+        )
+        claimed_change = (
+            ((quoted_price - material.current_price) / material.current_price) * 100
+            if material.current_price
+            else 0.0
+        )
+        market_supported_change = (
+            ((active_forecast_price - material.current_price) / material.current_price) * 100
+            if material.current_price
+            else 0.0
+        )
+        unexplained = claimed_change - market_supported_change
+
+        high_risk_supplier = (
+            (supplier.risk_score or 0) >= 70
+            or supplier.single_source
+            or material.single_source_flag
+        )
+
+        scenario_label = "custom driver scenario" if is_scenario else "base market forecast"
+
+        if gap_pct <= 0.0:
+            recommendation = "ACCEPT"
+            assessment = "SUPPORTED"
+            reason = f"Under the active {scenario_label} (expected price {material.currency} {active_forecast_price:,.2f}), the supplier quote of {material.currency} {quoted_price:,.2f} is within or below the expected market range (gap {gap_pct:+.1f}%)."
+            guidance = "Quote is fully supported by active market forecast. Proceed to accept quote or lock in volume."
+        elif gap_pct <= 2.0:
+            recommendation = "ACCEPT" if not high_risk_supplier else "NEGOTIATE"
+            assessment = "SUPPORTED"
+            reason = f"Under the active {scenario_label} (expected price {material.currency} {active_forecast_price:,.2f}), the supplier quote of {material.currency} {quoted_price:,.2f} exceeds forecast by +{gap_pct:.1f}%, within acceptable tolerance."
+            guidance = "Quote aligns closely with forecast. Minor negotiation optional unless high supplier risk applies."
+        elif gap_pct <= 8.0:
+            recommendation = "NEGOTIATE"
+            assessment = "PARTIALLY_SUPPORTED"
+            reason = f"Supplier quote ({material.currency} {quoted_price:,.2f}) exceeds active market forecast ({material.currency} {active_forecast_price:,.2f}) by +{gap_pct:.1f}% ({unexplained:+.1f}% unexplained relative to market drivers)."
+            guidance = f"Use market-supported target price of {material.currency} {active_forecast_price:,.2f} as negotiation anchor."
+        else:
+            recommendation = "DUAL_SOURCE" if high_risk_supplier else "REJECT"
+            assessment = "UNSUPPORTED"
+            reason = f"Supplier quote ({material.currency} {quoted_price:,.2f}) significantly exceeds active market forecast ({material.currency} {active_forecast_price:,.2f}) by +{gap_pct:.1f}%."
+            guidance = f"Unexplained gap of {unexplained:+.1f}%. Reject price increase or request cost breakdown; consider alternative suppliers."
+
+        analyzed_list.append(
+            AnalyzedSupplierQuote(
+                supplier_id=supplier.id,
+                supplier_name=supplier.name,
+                supplier_code=supplier.supplier_code,
+                country=supplier.country,
+                qualification_status=supplier.qualification_status,
+                lead_time_days=supplier.lead_time_days,
+                share_of_supply=supplier.share_of_supply,
+                risk_score=supplier.risk_score,
+                single_source=supplier.single_source,
+                quoted_price=round(quoted_price, 2),
+                baseline_quoted_price=round(baseline_price, 2)
+                if baseline_price is not None
+                else None,
+                is_custom_quote=is_custom_quote,
+                active_forecast_price=round(active_forecast_price, 2),
+                quote_vs_forecast_gap_pct=round(gap_pct, 2),
+                claimed_change_pct=round(claimed_change, 2),
+                market_supported_change_pct=round(market_supported_change, 2),
+                unexplained_change_pct=round(unexplained, 2),
+                assessment=assessment,
+                recommendation=recommendation,
+                recommendation_reason=reason,
+                guidance=guidance,
+            )
+        )
+
+    return SupplierQuoteBatchAnalysisResponse(
+        material_id=material.id,
+        active_forecast_price=round(active_forecast_price, 2),
+        active_forecast_direction=active_direction,
+        confidence_score=round(confidence_score, 1),
+        is_scenario=is_scenario,
+        analyzed_quotes=analyzed_list,
     )

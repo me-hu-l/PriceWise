@@ -252,33 +252,40 @@ def seed() -> None:
                     {"material_code": m.material_code, "date": obs_date.isoformat(), "price": price}
                 )
 
-            # Supplier quote: hero narrative uses +9% claim on Ceria CMP Slurry (roadmap section 34)
-            claimed_pct = 0.09 if m.material_code == "MAT-001" else 0.03
-            quoted_price = round(current_price * (1 + claimed_pct), 2)
-            db.add(
-                SupplierQuote(
-                    supplier_id=primary_supplier_id,
-                    material_id=material_row.id,
-                    quote_date=current_date,
-                    quoted_price=quoted_price,
-                    currency=m.currency,
-                    unit=m.unit,
-                    previous_price=current_price,
-                    claimed_change_pct=claimed_pct * 100,
-                    reason="Raw material and energy cost increases (synthetic demo).",
-                    valid_until=None,
+            # Supplier quotes: hero narrative uses +9% claim on Ceria CMP Slurry (roadmap section 34)
+            for s in m.suppliers:
+                sup_id = supplier_id_by_code[s["supplier_code"]]
+                is_primary = s["supplier_code"] == primary_supplier_code
+                s_claimed_pct = (
+                    (0.09 if is_primary else 0.04)
+                    if m.material_code == "MAT-001"
+                    else (0.03 if is_primary else 0.015)
                 )
-            )
-            quote_rows_csv.append(
-                {
-                    "material_code": m.material_code,
-                    "supplier_code": primary_supplier_code,
-                    "quote_date": current_date.isoformat(),
-                    "quoted_price": quoted_price,
-                    "previous_price": current_price,
-                    "claimed_change_pct": claimed_pct * 100,
-                }
-            )
+                s_quoted_price = round(current_price * (1 + s_claimed_pct), 2)
+                db.add(
+                    SupplierQuote(
+                        supplier_id=sup_id,
+                        material_id=material_row.id,
+                        quote_date=current_date,
+                        quoted_price=s_quoted_price,
+                        currency=m.currency,
+                        unit=m.unit,
+                        previous_price=current_price,
+                        claimed_change_pct=s_claimed_pct * 100,
+                        reason=f"Raw material and supply chain adjustment ({s['name']}).",
+                        valid_until=None,
+                    )
+                )
+                quote_rows_csv.append(
+                    {
+                        "material_code": m.material_code,
+                        "supplier_code": s["supplier_code"],
+                        "quote_date": current_date.isoformat(),
+                        "quoted_price": s_quoted_price,
+                        "previous_price": current_price,
+                        "claimed_change_pct": s_claimed_pct * 100,
+                    }
+                )
 
         # --- Market events ---
         event_rows_csv = []

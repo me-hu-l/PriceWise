@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { ForecastResponse, PriceObservation } from "@/lib/types";
 import { Card } from "@/components/common/Card";
 import { isInsufficientData } from "@/components/forecast/ForecastCard";
@@ -8,6 +8,16 @@ import { isInsufficientData } from "@/components/forecast/ForecastCard";
 const WIDTH = 900;
 const HEIGHT = 260;
 const PADDING = { top: 12, right: 16, bottom: 24, left: 56 };
+
+type TimeRange = "3M" | "6M" | "1Y" | "3Y" | "ALL";
+
+const RANGES: { label: string; value: TimeRange }[] = [
+  { label: "3M", value: "3M" },
+  { label: "6M", value: "6M" },
+  { label: "1Y", value: "1Y" },
+  { label: "3Y", value: "3Y" },
+  { label: "All", value: "ALL" },
+];
 
 /** Recharts' axis/scale computation was unreliable in this environment (axes
  * silently failed to render, degrading lines to a straight diagonal), so this
@@ -19,7 +29,27 @@ export function PriceHistoryChart({
   history: PriceObservation[];
   forecast?: ForecastResponse;
 }) {
+  const [range, setRange] = useState<TimeRange>("ALL");
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+
+  const filteredHistory = useMemo(() => {
+    if (range === "ALL" || history.length === 0) return history;
+    const lastDate = new Date(history[history.length - 1].date);
+    const cutoff = new Date(lastDate);
+
+    if (range === "3M") {
+      cutoff.setMonth(cutoff.getMonth() - 3);
+    } else if (range === "6M") {
+      cutoff.setMonth(cutoff.getMonth() - 6);
+    } else if (range === "1Y") {
+      cutoff.setFullYear(cutoff.getFullYear() - 1);
+    } else if (range === "3Y") {
+      cutoff.setFullYear(cutoff.getFullYear() - 3);
+    }
+
+    const res = history.filter((h) => new Date(h.date) >= cutoff);
+    return res.length >= 2 ? res : history.slice(-3);
+  }, [history, range]);
 
   if (history.length === 0) {
     return (
@@ -30,7 +60,7 @@ export function PriceHistoryChart({
   }
 
   const hasForecast = !!forecast && !isInsufficientData(forecast);
-  const points = history.map((h) => ({ date: h.date, price: h.price }));
+  const points = filteredHistory.map((h) => ({ date: h.date, price: h.price }));
   const forecastPoint = hasForecast
     ? { date: forecast!.target_date, price: forecast!.point_forecast }
     : null;
@@ -76,7 +106,7 @@ export function PriceHistoryChart({
   const allDates = points.map((p) => p.date).concat(forecastPoint ? [forecastPoint.date] : []);
 
   const hovered =
-    hoverIndex != null
+    hoverIndex != null && hoverIndex < allDates.length
       ? {
           date: allDates[hoverIndex],
           value: hoverIndex < points.length ? points[hoverIndex].price : forecastPoint?.price,
@@ -84,7 +114,30 @@ export function PriceHistoryChart({
       : null;
 
   return (
-    <Card title="Price history & forecast">
+    <Card>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+        <h3 className="text-sm font-semibold text-slate-700">Price history & forecast</h3>
+        <div className="flex items-center gap-1 rounded-md bg-slate-100 p-0.5">
+          {RANGES.map((r) => (
+            <button
+              key={r.value}
+              type="button"
+              onClick={() => {
+                setRange(r.value);
+                setHoverIndex(null);
+              }}
+              className={`rounded px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                range === r.value
+                  ? "bg-white text-slate-900 shadow-sm font-semibold"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="relative w-full overflow-x-auto">
         <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="w-full" style={{ minWidth: 480 }}>
           {yTickValues.map((v, i) => (
