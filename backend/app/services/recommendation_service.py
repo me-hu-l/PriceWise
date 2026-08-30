@@ -1,5 +1,7 @@
 """Rule-based procurement recommendations and supplier claim analysis."""
 
+from __future__ import annotations
+
 from sqlalchemy.orm import Session
 
 from app.db.models import Evidence, Forecast, Material, Recommendation, Supplier
@@ -29,7 +31,7 @@ def _supply_risk(material: Material, suppliers: list[Supplier]) -> tuple[bool, l
 def _recommendation_rule(material: Material, forecast: Forecast, suppliers: list[Supplier]):
     supply_risk, supply_reasons = _supply_risk(material, suppliers)
     confidence = forecast.confidence_score
-    forecast_change_pct = (forecast.point_forecast / material.current_price - 1) * 100
+    forecast_change_pct = (forecast.point_forecast / material.current_price - 1) * 100 if material.current_price else 0.0
     rising = forecast.direction == "INCREASING"
     falling = forecast.direction == "DECREASING"
     high_confidence = confidence >= 70
@@ -60,15 +62,48 @@ def _recommendation_rule(material: Material, forecast: Forecast, suppliers: list
     return action, duration, conviction, "; ".join(reason_parts), supply_risk, decision_rule, forecast_change_pct, supply_reasons
 
 
-def get_recommendation(db: Session, material: Material) -> Recommendation | None:
-    forecast = forecast_service.get_or_generate_forecast(db, material)
-    if forecast is None:
-        return None
-    suppliers = supplier_service.list_suppliers_for_material(db, material.id)
-    action, duration, conviction, reason, supply_risk, decision_rule, forecast_change_pct, supply_reasons = _recommendation_rule(
+def _attach_transient_fields(
+    recommendation: Recommendation,
+    material: Material,
+    forecast: Forecast,
+    suppliers: list[Supplier],
+) -> Recommendation:
+    _, _, _, _, supply_risk, decision_rule, forecast_change_pct, supply_reasons = _recommendation_rule(
         material, forecast, suppliers
     )
-    old_ids = [r.id for r in db.query(Recommendation.id).filter_by(material_id=material.id).all()]
+    recommendation.forecast_direction = forecast.direction
+    recommendation.forecast_change_pct = forecast_change_pct
+    recommendation.confidence_score = forecast.confidence_score
+    recommendation.supply_risk = "HIGH" if supply_risk else "MANAGEABLE"
+    recommendation.supply_risk_factors = supply_reasons
+    recommendation.decision_rule = decision_rule
+    return recommendation
+
+
+def generate_recommendation(
+    db: Session, material: Material, forecast: Forecast
+) -> Recommendation:
+    suppliers = supplier_service.list_suppliers_for_material(db, material.id)
+    (
+        action,
+        duration,
+        conviction,
+        reason,
+        supply_risk,
+        decision_rule,
+        forecast_change_pct,
+        supply_reasons,
+    ) = _recommendation_rule(material, forecast, suppliers)
+
+    old_ids = [
+        r.id
+        for r in db.query(Recommendation.id)
+        .filter(
+            (Recommendation.material_id == material.id)
+            | (Recommendation.forecast_id == forecast.id)
+        )
+        .all()
+    ]
     if old_ids:
         db.query(Evidence).filter(Evidence.recommendation_id.in_(old_ids)).delete(
             synchronize_session=False
@@ -76,6 +111,7 @@ def get_recommendation(db: Session, material: Material) -> Recommendation | None
         db.query(Recommendation).filter(Recommendation.id.in_(old_ids)).delete(
             synchronize_session=False
         )
+
     recommendation = Recommendation(
         material_id=material.id,
         forecast_id=forecast.id,
@@ -86,15 +122,50 @@ def get_recommendation(db: Session, material: Material) -> Recommendation | None
     )
     db.add(recommendation)
     db.flush()
+
     evidence = [
-        ("FORECAST", "Forecast outlook", f"The forecast is {forecast.direction.lower()} with confidence {forecast.confidence_score:.0f}.", "forecast"),
-        ("SUPPLY_RISK", "Supply risk", "Supply concentration and lead-time indicators support elevated risk." if supply_risk else "No elevated supply concentration or lead-time signal was found.", "supplier data"),
+        (
+            "FORECAST",
+            "Forecast outlook",
+            f"The forecast is {forecast.direction.lower()} with confidence {forecast.confidence_score:.0f}.",
+            "forecast",
+        ),
+        (
+            "SUPPLY_RISK",
+            "Supply risk",
+            (
+                "Supply concentration and lead-time indicators support elevated risk."
+                if supply_risk
+                else "No elevated supply concentration or lead-time signal was found."
+            ),
+            "supplier data",
+        ),
     ]
     for evidence_type, title, description, source in evidence:
-        db.add(Evidence(recommendation_id=recommendation.id, evidence_type=evidence_type, title=title, description=description, source=source, weight=1.0))
+        db.add(
+            Evidence(
+                recommendation_id=recommendation.id,
+                evidence_type=evidence_type,
+                title=title,
+                description=description,
+                source=source,
+                weight=1.0,
+            )
+        )
+
     events = market_service.list_events_for_material(db, material.id, db_material=material)
     for event in events[:3]:
-        db.add(Evidence(recommendation_id=recommendation.id, evidence_type="MARKET_EVENT", title=event.title, description=event.description, source=event.source_name, weight=event.event_confidence))
+        db.add(
+            Evidence(
+                recommendation_id=recommendation.id,
+                evidence_type="MARKET_EVENT",
+                title=event.title,
+                description=event.description,
+                source=event.source_name,
+                weight=event.event_confidence,
+            )
+        )
+
     db.commit()
     db.refresh(recommendation)
     recommendation.forecast_direction = forecast.direction
@@ -104,6 +175,25 @@ def get_recommendation(db: Session, material: Material) -> Recommendation | None
     recommendation.supply_risk_factors = supply_reasons
     recommendation.decision_rule = decision_rule
     return recommendation
+
+
+def get_recommendation(db: Session, material: Material) -> Recommendation | None:
+    forecast = forecast_service.get_or_generate_forecast(db, material)
+    if forecast is None:
+        return None
+    existing = (
+        db.query(Recommendation)
+        .filter(
+            Recommendation.material_id == material.id,
+            Recommendation.forecast_id == forecast.id,
+        )
+        .order_by(Recommendation.created_at.desc())
+        .first()
+    )
+    if existing is not None:
+        suppliers = supplier_service.list_suppliers_for_material(db, material.id)
+        return _attach_transient_fields(existing, material, forecast, suppliers)
+    return generate_recommendation(db, material, forecast)
 
 
 def analyze_supplier_claim(db: Session, material: Material, claimed_change_pct: float) -> SupplierClaimAnalysis | None:

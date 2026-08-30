@@ -31,3 +31,24 @@ def test_get_or_generate_forecast_is_cached(db_session, material_with_history):
     first = forecast_service.get_or_generate_forecast(db_session, material_with_history)
     second = forecast_service.get_or_generate_forecast(db_session, material_with_history)
     assert first.id == second.id  # second call reads the persisted row, doesn't regenerate
+
+
+def test_recommendation_is_precomputed_and_cached(db_session, material_with_history):
+    from app.services import recommendation_service
+
+    forecast = forecast_service.generate_forecast(db_session, material_with_history)
+    assert forecast is not None
+
+    rec1 = recommendation_service.get_recommendation(db_session, material_with_history)
+    assert rec1 is not None
+    assert rec1.forecast_id == forecast.id
+    assert len(rec1.evidence) >= 2
+    assert rec1.action in {"SHORT_LOCK", "LONG_LOCK", "WAIT", "NEGOTIATE", "STOCK", "DUAL_SOURCE", "MONITOR"}
+    assert rec1.forecast_direction
+    assert rec1.confidence_score >= 0
+    assert rec1.supply_risk in {"HIGH", "MANAGEABLE"}
+
+    rec2 = recommendation_service.get_recommendation(db_session, material_with_history)
+    assert rec2 is not None
+    assert rec1.id == rec2.id  # reads the persisted row, does not delete or regenerate
+

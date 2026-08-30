@@ -5,11 +5,13 @@ from app.db.models import (
     ComponentDriver,
     ConfidenceComponent,
     CustomPriceObservation,
+    Evidence,
     Forecast,
     ForecastContribution,
     Material,
     MaterialComponent,
     PriceObservation,
+    Recommendation,
 )
 
 
@@ -84,6 +86,22 @@ def replace_custom_price_history(
         row.id for row in db.query(Forecast.id).filter(Forecast.material_id == material.id).all()
     ]
     if forecast_ids:
+        recommendation_ids = [
+            r.id
+            for r in db.query(Recommendation.id)
+            .filter(
+                (Recommendation.forecast_id.in_(forecast_ids))
+                | (Recommendation.material_id == material.id)
+            )
+            .all()
+        ]
+        if recommendation_ids:
+            db.query(Evidence).filter(
+                Evidence.recommendation_id.in_(recommendation_ids)
+            ).delete(synchronize_session=False)
+            db.query(Recommendation).filter(
+                Recommendation.id.in_(recommendation_ids)
+            ).delete(synchronize_session=False)
         db.query(ForecastContribution).filter(
             ForecastContribution.forecast_id.in_(forecast_ids)
         ).delete(synchronize_session=False)

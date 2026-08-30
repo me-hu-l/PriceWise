@@ -18,10 +18,12 @@ from app.db.models import (
     ComponentDriver,
     ConfidenceComponent,
     Driver,
+    Evidence,
     Forecast,
     ForecastContribution,
     Material,
     MaterialComponent,
+    Recommendation,
 )
 from app.ml import confidence as confidence_ml
 from app.ml import ensemble, explainability, preprocessing
@@ -179,6 +181,22 @@ def generate_forecast(db: Session, material: Material) -> Forecast | None:
         f.id for f in db.query(Forecast.id).filter(Forecast.material_id == material.id).all()
     ]
     if old_forecast_ids:
+        old_recommendation_ids = [
+            r.id
+            for r in db.query(Recommendation.id)
+            .filter(
+                (Recommendation.forecast_id.in_(old_forecast_ids))
+                | (Recommendation.material_id == material.id)
+            )
+            .all()
+        ]
+        if old_recommendation_ids:
+            db.query(Evidence).filter(
+                Evidence.recommendation_id.in_(old_recommendation_ids)
+            ).delete(synchronize_session=False)
+            db.query(Recommendation).filter(
+                Recommendation.id.in_(old_recommendation_ids)
+            ).delete(synchronize_session=False)
         db.query(ForecastContribution).filter(
             ForecastContribution.forecast_id.in_(old_forecast_ids)
         ).delete(synchronize_session=False)
@@ -250,6 +268,11 @@ def generate_forecast(db: Session, material: Material) -> Forecast | None:
 
     db.commit()
     db.refresh(forecast)
+
+    from app.services import recommendation_service
+
+    recommendation_service.generate_recommendation(db, material, forecast)
+
     return forecast
 
 
