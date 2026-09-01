@@ -19,6 +19,13 @@ const RANGES: { label: string; value: TimeRange }[] = [
   { label: "All", value: "ALL" },
 ];
 
+const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function formatAxisDate(dateValue: string): string {
+  const date = new Date(dateValue);
+  return `${MONTH_LABELS[date.getUTCMonth()]} ${String(date.getUTCFullYear()).slice(-2)}`;
+}
+
 /** Recharts' axis/scale computation was unreliable in this environment (axes
  * silently failed to render, degrading lines to a straight diagonal), so this
  * chart is drawn with plain SVG instead of pulling in a charting library. */
@@ -158,7 +165,7 @@ export function PriceHistoryChart({
                 fontSize={10}
                 fill="#94a3b8"
               >
-                {v.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                {v.toLocaleString("en-US", { maximumFractionDigits: 0 })}
               </text>
             </g>
           ))}
@@ -184,7 +191,7 @@ export function PriceHistoryChart({
 
           {xLabelIndices.map((i) => (
             <text key={i} x={xForIndex(i)} y={HEIGHT - 6} textAnchor="middle" fontSize={10} fill="#94a3b8">
-              {new Date(allDates[i]).toLocaleDateString(undefined, { month: "short", year: "2-digit" })}
+              {formatAxisDate(allDates[i])}
             </text>
           ))}
 

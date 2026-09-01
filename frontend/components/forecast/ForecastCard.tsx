@@ -31,7 +31,7 @@ export function ForecastCard({ forecast }: { forecast: ForecastResponse }) {
     <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-slate-700">
-          Forecast ({forecast.horizon}, target {new Date(forecast.target_date).toLocaleDateString()})
+          Forecast ({forecast.horizon}, target {new Date(forecast.target_date).toLocaleDateString("en-GB", { timeZone: "UTC" })})
         </h3>
         {forecast.data_mode && forecast.data_mode !== "STRONG" && (
           <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
@@ -47,11 +47,11 @@ export function ForecastCard({ forecast }: { forecast: ForecastResponse }) {
       )}
 
       <p className={`text-2xl font-semibold ${directionStyle[forecast.direction] ?? "text-slate-900"}`}>
-        {forecast.point_forecast.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+        {forecast.point_forecast.toLocaleString("en-US", { maximumFractionDigits: 2 })}
       </p>
       <p className="text-sm text-slate-500">
-        Range {forecast.lower_bound.toLocaleString(undefined, { maximumFractionDigits: 2 })} –{" "}
-        {forecast.upper_bound.toLocaleString(undefined, { maximumFractionDigits: 2 })} · {forecast.direction}
+        Range {forecast.lower_bound.toLocaleString("en-US", { maximumFractionDigits: 2 })} –{" "}
+        {forecast.upper_bound.toLocaleString("en-US", { maximumFractionDigits: 2 })} · {forecast.direction}
       </p>
       <p className="mt-2 text-sm font-medium text-slate-700">
         Confidence: {forecast.confidence_score.toFixed(0)}%

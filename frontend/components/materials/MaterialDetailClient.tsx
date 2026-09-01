@@ -146,7 +146,7 @@ export function MaterialDetailClient({
               {material.currency} {material.current_price.toLocaleString()} / {material.unit}
             </p>
             <p className="text-sm text-slate-500">
-              As of {new Date(material.current_price_date).toLocaleDateString()} · lead time{" "}
+              As of {new Date(material.current_price_date).toLocaleDateString("en-GB", { timeZone: "UTC" })} · lead time{" "}
               {material.lead_time_days} days
               {material.single_source_flag && " · single-source"}
             </p>

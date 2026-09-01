@@ -21,7 +21,8 @@ export function MarketEventList({ events }: { events: MarketEvent[] }) {
             </p>
             {e.description && <p className="mt-1 text-sm text-slate-600">{e.description}</p>}
             <p className="mt-1 text-sm text-slate-500">
-              {e.source_name ?? "Unknown source"} · {new Date(e.published_at).toLocaleDateString()}
+              {e.source_name ?? "Unknown source"} ·{" "}
+              {new Date(e.published_at).toLocaleDateString("en-GB", { timeZone: "UTC" })}
               {" · "}
               {e.impact_magnitude} impact · {e.impact_horizon.toLowerCase()} horizon
               {typeof e.event_confidence === "number" && ` · ${e.event_confidence}% confidence`}
