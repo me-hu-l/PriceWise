@@ -31,6 +31,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
           </div>
         </header>
+        <div className="border-b border-amber-200 bg-amber-50 px-6 py-1.5 text-center text-xs font-medium text-amber-800">
+          Demo build — all materials, suppliers, prices, and market events shown are synthetic data generated for demonstration purposes only.
+        </div>
         <main className="mx-auto max-w-7xl px-6 py-8">{children}</main>
       </body>
     </html>

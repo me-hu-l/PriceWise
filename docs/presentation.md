@@ -3,7 +3,7 @@ marp: true
 theme: default
 paginate: true
 header: 'PriceWise | Semiconductor Material Price Intelligence & Procurement Decision Engine'
-footer: 'FABathon 2026 — Tata Electronics / TSMPL Concept'
+footer: 'FABathon 2026 — Tata Electronics / TSMPL Concept | All data shown is synthetic (demo purposes only)'
 style: |
   section {
     font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -88,6 +88,8 @@ style: |
 
 **FABathon 2026 Solution**
 *Tata Electronics / TSMPL Semiconductor Sourcing Challenge*
+
+<span class="badge">All data is synthetic — demo purposes only</span>
 
 </div>
 <img src="../frontend/public/pricewise-logo.svg" alt="PriceWise logo" class="logo-big" />
